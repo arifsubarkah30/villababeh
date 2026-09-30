@@ -1766,3 +1766,93 @@ function toggleMobileMenu() {
         drawer.classList.toggle("hidden");
     }
 }
+
+async function submitGeneralSettings(event) {
+    event.preventDefault();
+    const nameElem = document.getElementById("setVillaName");
+    const taglineElem = document.getElementById("setTagline");
+    const descElem = document.getElementById("setDescription");
+    const waElem = document.getElementById("setWhatsapp");
+    const pinElem = document.getElementById("setAdminPin");
+    const weekdayElem = document.getElementById("setWeekdayPrice");
+    const weekendElem = document.getElementById("setWeekendPrice");
+    const addressElem = document.getElementById("setAddress");
+    const logoElem = document.getElementById("setLogoUrl");
+
+    const payload = {
+        villa_name: nameElem ? nameElem.value : (appSettings.villa_name || "Villa Babeh"),
+        tagline: taglineElem ? taglineElem.value : (appSettings.tagline || ""),
+        description: descElem ? descElem.value : (appSettings.description || ""),
+        whatsapp: waElem ? waElem.value : (appSettings.whatsapp || ""),
+        weekday_price: weekdayElem ? weekdayElem.value : (appSettings.weekday_price || "1500000"),
+        weekend_price: weekendElem ? weekendElem.value : (appSettings.weekend_price || "2200000"),
+        address: addressElem ? addressElem.value : (appSettings.address || ""),
+        villa_logo: logoElem ? logoElem.value : (appSettings.villa_logo || "/static/images/logo.jpg")
+    };
+
+    if (pinElem && pinElem.value && pinElem.value.trim() !== "") {
+        payload.admin_pin = pinElem.value.trim();
+    }
+
+    try {
+        const res = await fetch("/api/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+            alert("Pengaturan Villa berhasil disimpan!");
+            await loadSettings();
+        } else {
+            alert("Gagal menyimpan pengaturan: " + data.message);
+        }
+    } catch (e) {
+        alert("Gagal menghubungi server.");
+    }
+}
+
+async function submitChangeAdminPin(event) {
+    event.preventDefault();
+    const currentPin = document.getElementById("currentPinInput").value;
+    const newPin = document.getElementById("newPinInput").value;
+    const confirmNewPin = document.getElementById("confirmNewPinInput").value;
+
+    const expectedPin = appSettings.admin_pin || "1234";
+
+    if (currentPin !== expectedPin) {
+        alert("PIN Admin saat ini (lama) yang Anda masukkan SALAH!");
+        return;
+    }
+
+    if (!newPin || newPin.length < 4) {
+        alert("PIN baru minimal harus 4 karakter/angka!");
+        return;
+    }
+
+    if (newPin !== confirmNewPin) {
+        alert("Konfirmasi PIN baru tidak cocok! Mohon periksa kembali.");
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ admin_pin: newPin })
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+            appSettings.admin_pin = newPin;
+            alert("🔒 PIN Admin berhasil diubah! Gunakan PIN baru ini untuk login berikutnya.");
+            document.getElementById("currentPinInput").value = "";
+            document.getElementById("newPinInput").value = "";
+            document.getElementById("confirmNewPinInput").value = "";
+        } else {
+            alert("Gagal memperbarui PIN: " + data.message);
+        }
+    } catch (e) {
+        alert("Terjadi kesalahan koneksi saat mengubah PIN.");
+    }
+}
+
