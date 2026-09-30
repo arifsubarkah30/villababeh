@@ -51,11 +51,19 @@ async function initApp() {
 // SETTINGS, FACILITIES & GALLERY LOADING
 // -------------------------------------------------------------
 async function loadSettings() {
+    const cached = localStorage.getItem("villa_settings_cache");
+    if (cached) {
+        try {
+            appSettings = JSON.parse(cached);
+            renderSettingsToUI();
+        } catch (e) {}
+    }
     try {
         const res = await fetch("/api/settings");
         const data = await res.json();
-        if (data.status === "success") {
-            appSettings = data.settings;
+        if (data.status === "success" && data.settings && Object.keys(data.settings).length > 0) {
+            appSettings = { ...appSettings, ...data.settings };
+            localStorage.setItem("villa_settings_cache", JSON.stringify(appSettings));
             renderSettingsToUI();
         }
     } catch (e) {
@@ -143,11 +151,24 @@ function renderSettingsToUI() {
 }
 
 async function loadFacilities() {
+    const cached = localStorage.getItem("villa_facilities_cache");
+    if (cached) {
+        try {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                facilitiesData = parsed;
+                renderFacilitiesUI();
+            }
+        } catch (e) {}
+    }
     try {
         const res = await fetch("/api/facilities");
         const data = await res.json();
         if (data.status === "success") {
-            facilitiesData = data.facilities;
+            if (data.facilities && data.facilities.length > 0) {
+                facilitiesData = data.facilities;
+            }
+            localStorage.setItem("villa_facilities_cache", JSON.stringify(facilitiesData));
             renderFacilitiesUI();
         }
     } catch (e) {
@@ -198,11 +219,24 @@ function renderFacilitiesUI() {
 }
 
 async function loadGallery() {
+    const cached = localStorage.getItem("villa_gallery_cache");
+    if (cached) {
+        try {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                galleryData = parsed;
+                renderGalleryUI();
+            }
+        } catch (e) {}
+    }
     try {
         const res = await fetch("/api/gallery");
         const data = await res.json();
         if (data.status === "success") {
-            galleryData = data.gallery;
+            if (data.gallery && data.gallery.length > 0) {
+                galleryData = data.gallery;
+            }
+            localStorage.setItem("villa_gallery_cache", JSON.stringify(galleryData));
             renderGalleryUI();
         }
     } catch (e) {
