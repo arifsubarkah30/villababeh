@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, send_from_directory
 import database as db
 import datetime
 import os
@@ -17,6 +17,17 @@ except Exception:
     pass
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Serve uploaded static files from /tmp/uploads on Vercel or local static/uploads
+@app.route('/static/uploads/<path:filename>')
+def serve_uploaded_file(filename):
+    if os.environ.get("VERCEL"):
+        tmp_dir = os.path.join('/tmp', 'uploads')
+        if os.path.exists(os.path.join(tmp_dir, filename)):
+            return send_from_directory(tmp_dir, filename)
+    
+    local_dir = os.path.join(app.root_path, 'static', 'uploads')
+    return send_from_directory(local_dir, filename)
 
 # Initialize database on startup
 try:

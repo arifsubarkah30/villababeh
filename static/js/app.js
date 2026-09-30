@@ -237,25 +237,68 @@ function renderGalleryUI() {
 
 // -------------------------------------------------------------
 // LOGO & PHOTO EDITING FUNCTIONS
-// -------------------------------------------------------------
+// Helper: Compress & Convert Uploaded Image File to Base64 Data URL
+function compressAndConvertToBase64(file, maxDimension = 1200, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxDimension) {
+                        height = Math.round((height * maxDimension) / width);
+                        width = maxDimension;
+                    }
+                } else {
+                    if (height > maxDimension) {
+                        width = Math.round((width * maxDimension) / height);
+                        height = maxDimension;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const dataUrl = canvas.toDataURL("image/jpeg", quality);
+                resolve(dataUrl);
+            };
+            img.onerror = () => reject("Gagal membaca gambar.");
+            img.src = e.target.result;
+        };
+        reader.onerror = () => reject("Gagal membaca file.");
+        reader.readAsDataURL(file);
+    });
+}
+
 async function handleLogoUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
-        const data = await res.json();
-        if (data.status === "success") {
-            document.getElementById("setLogoUrl").value = data.image_url;
-            document.getElementById("setLogoPreview").src = data.image_url;
-        } else {
-            alert(`Gagal mengunggah logo: ${data.message}`);
-        }
+        const base64Url = await compressAndConvertToBase64(file, 600, 0.85);
+        document.getElementById("setLogoUrl").value = base64Url;
+        const preview = document.getElementById("setLogoPreview");
+        if (preview) preview.src = base64Url;
     } catch (e) {
-        alert("Gagal mengunggah logo ke server.");
+        const formData = new FormData();
+        formData.append("file", file);
+        try {
+            const res = await fetch("/api/upload", { method: "POST", body: formData });
+            const data = await res.json();
+            if (data.status === "success") {
+                document.getElementById("setLogoUrl").value = data.image_url;
+                const preview = document.getElementById("setLogoPreview");
+                if (preview) preview.src = data.image_url;
+            }
+        } catch (err) {
+            alert("Gagal mengunggah logo.");
+        }
     }
 }
 
@@ -323,20 +366,23 @@ async function handleLocalFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
-        const data = await res.json();
-        if (data.status === "success") {
-            document.getElementById("photoUrlInput").value = data.image_url;
-            document.getElementById("photoModalPreview").src = data.image_url;
-        } else {
-            alert(`Gagal mengunggah foto: ${data.message}`);
-        }
+        const base64Url = await compressAndConvertToBase64(file, 1200, 0.8);
+        document.getElementById("photoUrlInput").value = base64Url;
+        document.getElementById("photoModalPreview").src = base64Url;
     } catch (e) {
-        alert("Gagal mengunggah foto ke server.");
+        const formData = new FormData();
+        formData.append("file", file);
+        try {
+            const res = await fetch("/api/upload", { method: "POST", body: formData });
+            const data = await res.json();
+            if (data.status === "success") {
+                document.getElementById("photoUrlInput").value = data.image_url;
+                document.getElementById("photoModalPreview").src = data.image_url;
+            }
+        } catch (err) {
+            alert("Gagal mengunggah foto.");
+        }
     }
 }
 
