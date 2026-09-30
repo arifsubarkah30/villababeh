@@ -56,13 +56,34 @@ def upload_file():
 def get_calendar():
     year = int(request.args.get('year', datetime.date.today().year))
     month = int(request.args.get('month', datetime.date.today().month))
-    calendar_data = db.get_month_calendar(year, month)
+    for_admin = request.args.get('for_admin', 'false').lower() == 'true'
+    
+    cal_res = db.get_month_calendar(year, month, for_public=not for_admin)
     return jsonify({
         "status": "success",
         "year": year,
         "month": month,
-        "dates": calendar_data
+        "dates": cal_res["dates"],
+        "is_released": cal_res["is_released"]
     })
+
+@app.route('/api/calendar/toggle_release_month', methods=['POST'])
+def toggle_release_month():
+    data = request.json or {}
+    year = int(data.get('year', datetime.date.today().year))
+    month = int(data.get('month', datetime.date.today().month))
+    release = data.get('released', True)
+    
+    try:
+        db.toggle_release_month(year, month, release)
+        status_text = "Dirilis Live ke Beranda" if release else "Belum Dirilis (Draft/Not Available)"
+        return jsonify({
+            "status": "success",
+            "is_released": release,
+            "message": f"Status bulan {month}/{year} berhasil diubah menjadi: {status_text}"
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/calendar/update', methods=['POST'])
 def update_calendar():

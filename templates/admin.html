@@ -285,15 +285,20 @@
                         </div>
                     </form>
 
-                    <!-- Month Nav Bar -->
-                    <div class="flex items-center justify-between">
-                        <button onclick="changeMonth(-1)" class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200">
-                            <i data-lucide="chevron-left" class="w-5 h-5"></i>
-                        </button>
-                        <h4 id="calendarMonthTitle" class="font-serif-title font-bold text-xl text-teal-900">Oktober 2026</h4>
-                        <button onclick="changeMonth(1)" class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200">
-                            <i data-lucide="chevron-right" class="w-5 h-5"></i>
-                        </button>
+                    <!-- Month Nav Bar & Release Status Toggle -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 bg-teal-50/50 p-3 rounded-2xl border border-teal-100">
+                        <div class="flex items-center space-x-2">
+                            <button onclick="changeMonth(-1)" class="p-2 rounded-xl bg-white hover:bg-gray-100 border border-gray-200 shadow-sm">
+                                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                            </button>
+                            <h4 id="calendarMonthTitle" class="font-serif-title font-bold text-xl text-teal-900 min-w-[170px] text-center">Oktober 2026</h4>
+                            <button onclick="changeMonth(1)" class="p-2 rounded-xl bg-white hover:bg-gray-100 border border-gray-200 shadow-sm">
+                                <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                        <div id="adminMonthReleaseBadge">
+                            <!-- Rendered dynamically via app.js -->
+                        </div>
                     </div>
 
                     <!-- Mobile Swipe Hint -->

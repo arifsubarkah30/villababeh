@@ -127,6 +127,13 @@ body {
     color: var(--maint-text);
 }
 
+.cell-not-available {
+    background-color: #F3F4F6 !important;
+    border-color: #E5E7EB !important;
+    color: #9CA3AF !important;
+    cursor: not-allowed !important;
+}
+
 .cell-selected {
     background-color: #E0F2FE !important;
     border-color: #0284C7 !important;

@@ -193,7 +193,32 @@ def update_settings(settings_dict):
     conn.commit()
     conn.close()
 
-def get_month_calendar(year, month):
+def get_released_months():
+    settings = get_settings()
+    raw = settings.get("released_months", "")
+    if not raw:
+        today = datetime.date.today()
+        default_months = [
+            f"{today.year:04d}-{today.month:02d}",
+            f"{today.year:04d}-{(today.month % 12) + 1:02d}",
+            f"{today.year:04d}-{(today.month + 1) % 12 + 1:02d}"
+        ]
+        return set(default_months)
+    return set([m.strip() for m in raw.split(",") if m.strip()])
+
+def toggle_release_month(year, month, release=True):
+    released = get_released_months()
+    month_key = f"{year:04d}-{month:02d}"
+    if release:
+        released.add(month_key)
+    else:
+        released.discard(month_key)
+    
+    val = ",".join(sorted(list(released)))
+    update_settings({"released_months": val})
+    return release
+
+def get_month_calendar(year, month, for_public=False):
     conn = get_db_connection()
     settings = get_settings()
     default_weekday = int(settings.get("weekday_price", 1500000))
@@ -211,24 +236,39 @@ def get_month_calendar(year, month):
     else:
         last_day = datetime.date(year, month + 1, 1) - datetime.timedelta(days=1)
 
+    month_key = f"{year:04d}-{month:02d}"
+    released_set = get_released_months()
+    is_released = month_key in released_set
+
     result = {}
     curr = first_day
     while curr <= last_day:
         date_str = curr.strftime("%Y-%m-%d")
         if date_str in db_map:
-            result[date_str] = db_map[date_str]
+            item = dict(db_map[date_str])
         else:
             is_weekend = curr.weekday() in (4, 5, 6)
             default_price = default_weekend if is_weekend else default_weekday
-            result[date_str] = {
+            item = {
                 "date": date_str,
                 "status": "ready",
                 "price": default_price,
                 "note": ""
             }
+        
+        # If public view and month is NOT released: mark ready status as not_available
+        if for_public and not is_released:
+            if item["status"] == "ready":
+                item["status"] = "not_available"
+                item["note"] = "🔒 Belum Dirilis"
+        
+        result[date_str] = item
         curr += datetime.timedelta(days=1)
 
-    return result
+    return {
+        "dates": result,
+        "is_released": is_released
+    }
 
 def batch_update_dates(start_date, end_date, status=None, price=None, note=None):
     start = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()

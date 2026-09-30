@@ -389,6 +389,8 @@ async function savePhotoEdit() {
 // -------------------------------------------------------------
 // CALENDAR RENDERING & INTERACTION
 // -------------------------------------------------------------
+let isCurrentMonthReleased = true;
+
 async function loadCalendar(year, month) {
     const title = document.getElementById("calendarMonthTitle");
     if (title) title.innerText = `${monthNamesId[month - 1]} ${year}`;
@@ -397,15 +399,81 @@ async function loadCalendar(year, month) {
     if (grid) grid.innerHTML = `<div class="col-span-7 py-12 text-center text-gray-400">Memuat kalender...</div>`;
 
     try {
-        const res = await fetch(`/api/calendar?year=${year}&month=${month}`);
+        const res = await fetch(`/api/calendar?year=${year}&month=${month}&for_admin=${isAdmin ? 'true' : 'false'}`);
         const data = await res.json();
         if (data.status === "success") {
             calendarDates = data.dates;
+            isCurrentMonthReleased = data.is_released !== false;
+
+            renderMonthReleaseUI(year, month, isCurrentMonthReleased);
             renderCalendarGrid(year, month);
         }
     } catch (e) {
         console.error("Gagal memuat kalender:", e);
         if (grid) grid.innerHTML = `<div class="col-span-7 py-12 text-center text-red-500 font-bold">Gagal memuat data kalender.</div>`;
+    }
+}
+
+function renderMonthReleaseUI(year, month, isReleased) {
+    // Admin Month Release Badge / Toggle Button
+    const adminBadgeContainer = document.getElementById("adminMonthReleaseBadge");
+    if (adminBadgeContainer && isAdmin) {
+        if (isReleased) {
+            adminBadgeContainer.innerHTML = `
+                <button onclick="toggleMonthRelease(${year}, ${month}, false)" title="Bulan ini aktif terlihat di beranda utama. Klik untuk mengunci/draft." class="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center space-x-1.5 shadow-sm transition">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                    <span>🟢 Bulan Ini Dirilis Live (Klik untuk Kunci/Draft)</span>
+                </button>
+            `;
+        } else {
+            adminBadgeContainer.innerHTML = `
+                <button onclick="toggleMonthRelease(${year}, ${month}, true)" title="Bulan ini belum dirilis ke publik. Klik untuk mempublikasikan." class="bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center space-x-1.5 shadow-sm transition">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-600 inline-block"></span>
+                    <span>🔒 Bulan Ini Belum Dirilis (Draft/Not Available) - Klik Rilis Live</span>
+                </button>
+            `;
+        }
+    }
+
+    // Public Home Page Notice Bar
+    const publicNotice = document.getElementById("publicMonthReleaseNotice");
+    if (publicNotice && !isAdmin) {
+        if (!isReleased) {
+            publicNotice.className = "bg-amber-50 border border-amber-300 text-amber-950 p-3.5 rounded-2xl mb-4 text-xs font-semibold flex flex-wrap items-center justify-between gap-2 shadow-sm animate-fade-in";
+            publicNotice.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <span class="text-base">🔒</span>
+                    <span>Jadwal & harga sewa untuk <strong>${monthNamesId[month - 1]} ${year}</strong> belum dirilis resmi oleh pengelola. Status sementara: <em>Not Available</em>.</span>
+                </div>
+                <a href="https://wa.me/${appSettings.whatsapp || '6281234567890'}" target="_blank" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-xl font-bold text-[11px] shadow">Tanya Admin WA</a>
+            `;
+        } else {
+            publicNotice.className = "hidden";
+        }
+    }
+}
+
+async function toggleMonthRelease(year, month, releaseState) {
+    if (!isAdmin) return;
+    const monthName = monthNamesId[month - 1];
+    const actionText = releaseState ? "merilis" : "mengunci / mendrafkan";
+    if (!confirm(`Apakah Anda yakin ingin ${actionText} jadwal & harga bulan ${monthName} ${year}?`)) return;
+
+    try {
+        const res = await fetch("/api/calendar/toggle_release_month", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ year: year, month: month, released: releaseState })
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+            alert(data.message);
+            await loadCalendar(year, month);
+        } else {
+            alert("Gagal merilis bulan: " + data.message);
+        }
+    } catch (e) {
+        alert("Gagal menghubungi server.");
     }
 }
 
@@ -459,6 +527,9 @@ function renderCalendarGrid(year, month) {
         } else if (item.status === "maintenance") {
             statusClass = "cell-maintenance";
             statusText = "Maint";
+        } else if (item.status === "not_available") {
+            statusClass = "cell-not-available";
+            statusText = "Draft";
         }
 
         let isSelected = false;
@@ -489,7 +560,7 @@ function renderCalendarGrid(year, month) {
             </div>
             ${item.note ? `<div class="text-[9px] truncate font-bold ${isHoliday ? 'text-red-700 bg-red-100 px-1 rounded mt-0.5' : 'opacity-80'}" title="${item.note}">${item.note}</div>` : ''}
             <div class="price-tag ${isHoliday ? 'text-red-700 font-extrabold' : ''}">
-                ${formatShortRupiah(item.price)}
+                ${item.status === 'not_available' ? 'Not Avail' : formatShortRupiah(item.price)}
             </div>
         `;
 
@@ -500,6 +571,11 @@ function renderCalendarGrid(year, month) {
 function handleCellClick(dateStr, item) {
     if (isAdmin) {
         openSingleDateModal(dateStr, item);
+        return;
+    }
+
+    if (item.status === "not_available") {
+        alert(`Jadwal & tarif sewa untuk bulan ${monthNamesId[currentMonth - 1]} ${currentYear} belum dirilis resmi oleh pengelola villa.\n\nSilakan hubungi WhatsApp Admin untuk informasi lebih lanjut!`);
         return;
     }
 
