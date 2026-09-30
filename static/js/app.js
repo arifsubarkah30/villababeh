@@ -1358,42 +1358,45 @@ async function submitBatchDateUpdate(event) {
 }
 
 async function submitGeneralSettings(event) {
-    event.preventDefault();
-    const villaName = document.getElementById("setVillaName").value;
-    const tagline = document.getElementById("setTagline").value;
-    const description = document.getElementById("setDescription").value;
-    const whatsapp = document.getElementById("setWhatsapp").value;
-    const adminPin = appSettings.admin_pin || "1234";
-    const newAdminPin = document.getElementById("setAdminPin").value;
-    const weekdayPrice = document.getElementById("setWeekdayPrice").value;
-    const weekendPrice = document.getElementById("setWeekendPrice").value;
-    const address = document.getElementById("setAddress").value;
-    const villaLogo = document.getElementById("setLogoUrl").value;
+    if (event) event.preventDefault();
+    const villaName = document.getElementById("setVillaName")?.value || appSettings.villa_name || "Villa Babeh";
+    const tagline = document.getElementById("setTagline")?.value || appSettings.tagline || "";
+    const description = document.getElementById("setDescription")?.value || appSettings.description || "";
+    const whatsapp = document.getElementById("setWhatsapp")?.value || appSettings.whatsapp || "";
+    const newAdminPin = document.getElementById("setAdminPin")?.value;
+    const weekdayPrice = document.getElementById("setWeekdayPrice")?.value || appSettings.weekday_price || "1500000";
+    const weekendPrice = document.getElementById("setWeekendPrice")?.value || appSettings.weekend_price || "2200000";
+    const address = document.getElementById("setAddress")?.value || appSettings.address || "";
+    const villaLogo = document.getElementById("setLogoUrl")?.value || appSettings.villa_logo || "/static/images/logo.jpg";
+
+    const payload = {
+        villa_name: villaName,
+        tagline: tagline,
+        description: description,
+        whatsapp: whatsapp,
+        weekday_price: weekdayPrice,
+        weekend_price: weekendPrice,
+        address: address,
+        villa_logo: villaLogo,
+        highlight_1_title: document.getElementById("setHlTitle1")?.value || appSettings.highlight_1_title || "4 Kamar",
+        highlight_1_sub: document.getElementById("setHlSub1")?.value || appSettings.highlight_1_sub || "AC + Bed Super King",
+        highlight_2_title: document.getElementById("setHlTitle2")?.value || appSettings.highlight_2_title || "Private Pool",
+        highlight_2_sub: document.getElementById("setHlSub2")?.value || appSettings.highlight_2_sub || "Kolam Renang Bersih",
+        highlight_3_title: document.getElementById("setHlTitle3")?.value || appSettings.highlight_3_title || "30 Orang",
+        highlight_3_sub: document.getElementById("setHlSub3")?.value || appSettings.highlight_3_sub || "Kapasitas Tamu",
+        highlight_4_title: document.getElementById("setHlTitle4")?.value || appSettings.highlight_4_title || "Smart TV",
+        highlight_4_sub: document.getElementById("setHlSub4")?.value || appSettings.highlight_4_sub || "Sound Karaoke & WiFi"
+    };
+
+    if (newAdminPin && newAdminPin.trim() !== "") {
+        payload.admin_pin = newAdminPin.trim();
+    }
 
     try {
         const res = await fetch("/api/settings", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                admin_pin: adminPin,
-                new_admin_pin: newAdminPin || undefined,
-                villa_name: villaName,
-                tagline: tagline,
-                description: description,
-                whatsapp: whatsapp,
-                weekday_price: weekdayPrice,
-                weekend_price: weekendPrice,
-                address: address,
-                villa_logo: villaLogo,
-                highlight_1_title: document.getElementById("setHlTitle1")?.value || "4 Kamar",
-                highlight_1_sub: document.getElementById("setHlSub1")?.value || "AC + Bed Super King",
-                highlight_2_title: document.getElementById("setHlTitle2")?.value || "Private Pool",
-                highlight_2_sub: document.getElementById("setHlSub2")?.value || "Kolam Renang Bersih",
-                highlight_3_title: document.getElementById("setHlTitle3")?.value || "30 Orang",
-                highlight_3_sub: document.getElementById("setHlSub3")?.value || "Kapasitas Tamu",
-                highlight_4_title: document.getElementById("setHlTitle4")?.value || "Smart TV",
-                highlight_4_sub: document.getElementById("setHlSub4")?.value || "Sound Karaoke & WiFi"
-            })
+            body: JSON.stringify(payload)
         });
 
         const data = await res.json();
@@ -1402,7 +1405,7 @@ async function submitGeneralSettings(event) {
             await loadSettings();
             loadCalendar(currentYear, currentMonth);
         } else {
-            alert(data.message);
+            alert("Gagal menyimpan pengaturan: " + data.message);
         }
     } catch (e) {
         alert("Gagal menyimpan pengaturan.");
@@ -1957,50 +1960,6 @@ function toggleMobileMenu() {
     }
 }
 
-async function submitGeneralSettings(event) {
-    event.preventDefault();
-    const nameElem = document.getElementById("setVillaName");
-    const taglineElem = document.getElementById("setTagline");
-    const descElem = document.getElementById("setDescription");
-    const waElem = document.getElementById("setWhatsapp");
-    const pinElem = document.getElementById("setAdminPin");
-    const weekdayElem = document.getElementById("setWeekdayPrice");
-    const weekendElem = document.getElementById("setWeekendPrice");
-    const addressElem = document.getElementById("setAddress");
-    const logoElem = document.getElementById("setLogoUrl");
-
-    const payload = {
-        villa_name: nameElem ? nameElem.value : (appSettings.villa_name || "Villa Babeh"),
-        tagline: taglineElem ? taglineElem.value : (appSettings.tagline || ""),
-        description: descElem ? descElem.value : (appSettings.description || ""),
-        whatsapp: waElem ? waElem.value : (appSettings.whatsapp || ""),
-        weekday_price: weekdayElem ? weekdayElem.value : (appSettings.weekday_price || "1500000"),
-        weekend_price: weekendElem ? weekendElem.value : (appSettings.weekend_price || "2200000"),
-        address: addressElem ? addressElem.value : (appSettings.address || ""),
-        villa_logo: logoElem ? logoElem.value : (appSettings.villa_logo || "/static/images/logo.jpg")
-    };
-
-    if (pinElem && pinElem.value && pinElem.value.trim() !== "") {
-        payload.admin_pin = pinElem.value.trim();
-    }
-
-    try {
-        const res = await fetch("/api/settings", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (data.status === "success") {
-            alert("Pengaturan Villa berhasil disimpan!");
-            await loadSettings();
-        } else {
-            alert("Gagal menyimpan pengaturan: " + data.message);
-        }
-    } catch (e) {
-        alert("Gagal menghubungi server.");
-    }
-}
 
 async function submitChangeAdminPin(event) {
     event.preventDefault();
