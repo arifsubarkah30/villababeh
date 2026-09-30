@@ -1398,7 +1398,10 @@ function filterAdminBookings() {
                 <td class="p-3">${statusBadgeHTML}</td>
                 <td class="p-3 text-center">
                     <div class="flex items-center justify-center space-x-1">
-                        <button onclick="openPaymentModal(${b.id})" title="Simulasi & Catat Pembayaran DP/Pelunasan" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold shadow transition flex items-center space-x-1">
+                        <button onclick="lockBookingDates(${b.id}, '${b.check_in}', '${b.check_out}')" title="Kunci & Tandai Tanggal Terbooking di Kalender Publik" class="bg-amber-600 hover:bg-amber-700 text-white px-2 py-1 rounded-lg text-[11px] font-bold shadow transition flex items-center space-x-1">
+                            <span>🔒 Lock Tanggal</span>
+                        </button>
+                        <button onclick="openPaymentModal(${b.id})" title="Simulasi & Catat Pembayaran DP/Pelunasan" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded-lg text-[11px] font-bold shadow transition flex items-center space-x-1">
                             <span>💳 +Bayar</span>
                         </button>
                         <button onclick="openInvoiceModal(${b.id})" class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded-lg text-[11px] font-bold transition">
@@ -1412,6 +1415,39 @@ function filterAdminBookings() {
             </tr>
         `;
     }).join("");
+}
+
+async function lockBookingDates(bookingId, checkIn, checkOut) {
+    if (!isAdmin) return;
+
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    end.setDate(end.getDate() - 1);
+    const endStr = end.toISOString().split("T")[0];
+
+    if (!confirm(`Kunci tanggal ${formatDateIndo(checkIn)} s/d ${formatDateIndo(endStr)} menjadi 'Terbooking' (Penuh) di kalender publik?`)) return;
+
+    try {
+        const res = await fetch("/api/calendar/update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                start_date: checkIn,
+                end_date: endStr,
+                status: "booked",
+                note: "Terbooking oleh Pemesan"
+            })
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+            alert(`🔴 Tanggal ${formatDateIndo(checkIn)} s/d ${formatDateIndo(endStr)} telah resmi ditandai 'Terbooking' (Penuh) di kalender publik!`);
+            await loadCalendar(currentYear, currentMonth);
+        } else {
+            alert("Gagal mengunci tanggal: " + data.message);
+        }
+    } catch (e) {
+        alert("Terjadi kesalahan koneksi saat mengunci tanggal.");
+    }
 }
 
 // -------------------------------------------------------------
