@@ -90,6 +90,9 @@ function renderSettingsToUI() {
     const weekdayPrice = document.getElementById("infoWeekdayPrice");
     if (weekdayPrice) weekdayPrice.innerText = formatRupiah(appSettings.weekday_price || 1500000);
 
+    const middlePrice = document.getElementById("infoMiddlePrice");
+    if (middlePrice) middlePrice.innerText = formatRupiah(appSettings.middle_price || 1800000);
+
     const weekendPrice = document.getElementById("infoWeekendPrice");
     if (weekendPrice) weekendPrice.innerText = formatRupiah(appSettings.weekend_price || 2200000);
 
@@ -782,8 +785,14 @@ function calculateTotalPriceRange(startStr, endStr) {
         if (calendarDates[ds]) {
             total += calendarDates[ds].price;
         } else {
-            const isWeekend = curr.getDay() === 5 || curr.getDay() === 6 || curr.getDay() === 0;
-            total += isWeekend ? parseInt(appSettings.weekend_price || 2200000) : parseInt(appSettings.weekday_price || 1500000);
+            const day = curr.getDay(); // 0=Sun, 5=Fri, 6=Sat
+            if (day === 6) {
+                total += parseInt(appSettings.weekend_price || 2200000);
+            } else if (day === 5) {
+                total += parseInt(appSettings.middle_price || 1800000);
+            } else {
+                total += parseInt(appSettings.weekday_price || 1500000);
+            }
         }
         curr.setDate(curr.getDate() + 1);
     }
@@ -1183,6 +1192,7 @@ function populateAdminSettingsForm() {
         "setDescription": appSettings.description || "",
         "setWhatsapp": appSettings.whatsapp || "",
         "setWeekdayPrice": appSettings.weekday_price || 1500000,
+        "setMiddlePrice": appSettings.middle_price || 1800000,
         "setWeekendPrice": appSettings.weekend_price || 2200000,
         "setAddress": appSettings.address || "",
         "setLogoUrl": appSettings.villa_logo || "",
@@ -1365,6 +1375,7 @@ async function submitGeneralSettings(event) {
     const whatsapp = document.getElementById("setWhatsapp")?.value || appSettings.whatsapp || "";
     const newAdminPin = document.getElementById("setAdminPin")?.value;
     const weekdayPrice = document.getElementById("setWeekdayPrice")?.value || appSettings.weekday_price || "1500000";
+    const middlePrice = document.getElementById("setMiddlePrice")?.value || appSettings.middle_price || "1800000";
     const weekendPrice = document.getElementById("setWeekendPrice")?.value || appSettings.weekend_price || "2200000";
     const address = document.getElementById("setAddress")?.value || appSettings.address || "";
     const villaLogo = document.getElementById("setLogoUrl")?.value || appSettings.villa_logo || "/static/images/logo.jpg";
@@ -1375,6 +1386,7 @@ async function submitGeneralSettings(event) {
         description: description,
         whatsapp: whatsapp,
         weekday_price: weekdayPrice,
+        middle_price: middlePrice,
         weekend_price: weekendPrice,
         address: address,
         villa_logo: villaLogo,

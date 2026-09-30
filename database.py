@@ -120,8 +120,9 @@ def init_db():
             "villa_name": "Villa Babeh",
             "tagline": "Mountain View Villa - Hunian Mewah & Asri untuk Liburan Keluarga Terbaik",
             "description": "Villa Babeh menawarkan pengalaman menginap istimewa dengan fasilitas lengkap, kolam renang pribadi, pemandangan gunung & alam indah, dan suasana yang tenang & sejuk.",
-            "whatsapp": "6281234567890",
+            "whatsapp": "6281295398434",
             "weekday_price": "1500000",
+            "middle_price": "1800000",
             "weekend_price": "2200000",
             "address": "Jl. Raya Puncak No. 88, Bogor, Jawa Barat",
             "admin_pin": "1234",
@@ -194,6 +195,7 @@ def get_month_calendar(year, month, for_public=False):
     conn = get_db_connection()
     settings = get_settings()
     default_weekday = int(settings.get("weekday_price", 1500000))
+    default_middle = int(settings.get("middle_price", 1800000))
     default_weekend = int(settings.get("weekend_price", 2200000))
 
     prefix = f"{year:04d}-{month:02d}-%"
@@ -219,8 +221,14 @@ def get_month_calendar(year, month, for_public=False):
         if date_str in db_map:
             item = dict(db_map[date_str])
         else:
-            is_weekend = curr.weekday() in (4, 5, 6)
-            default_price = default_weekend if is_weekend else default_weekday
+            w = curr.weekday() # 0-4=Mon-Fri, 5=Sat, 6=Sun
+            if w == 5:
+                default_price = default_weekend
+            elif w == 4:
+                default_price = default_middle
+            else:
+                default_price = default_weekday
+
             item = {
                 "date": date_str,
                 "status": "ready",
@@ -247,13 +255,21 @@ def batch_update_dates(start_date, end_date, status=None, price=None, note=None)
     end = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
     
     conn = get_db_connection()
+    settings = get_settings()
+    default_weekday = int(settings.get("weekday_price", 1500000))
+    default_middle = int(settings.get("middle_price", 1800000))
+    default_weekend = int(settings.get("weekend_price", 2200000))
+
     curr = start
     while curr <= end:
         date_str = curr.strftime("%Y-%m-%d")
         existing = conn.execute("SELECT status, price, note FROM calendar WHERE date = ?", (date_str,)).fetchone()
         
+        w = curr.weekday()
+        day_default_price = default_weekend if w == 5 else (default_middle if w == 4 else default_weekday)
+
         new_status = status if status else (existing["status"] if existing else "ready")
-        new_price = price if price is not None else (existing["price"] if existing else (2200000 if curr.weekday() in (4,5,6) else 1500000))
+        new_price = price if price is not None else (existing["price"] if existing else day_default_price)
         new_note = note if note is not None else (existing["note"] if existing else "")
 
         conn.execute('''

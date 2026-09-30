@@ -587,14 +587,18 @@
                                 <input type="password" id="setAdminPin" placeholder="PIN Baru" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm">
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Harga Dasar Weekday (Rp)</label>
-                                <input type="number" id="setWeekdayPrice" required class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm">
+                                <label class="block text-xs font-bold text-teal-800 uppercase mb-1">🟢 Weekday (Minggu - Kamis)</label>
+                                <input type="number" id="setWeekdayPrice" required placeholder="1500000" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-bold text-teal-900">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Harga Dasar Weekend (Rp)</label>
-                                <input type="number" id="setWeekendPrice" required class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm">
+                                <label class="block text-xs font-bold text-amber-800 uppercase mb-1">🟡 Middle (Jumat)</label>
+                                <input type="number" id="setMiddlePrice" required placeholder="1800000" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-bold text-amber-900">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-red-800 uppercase mb-1">🔴 Weekend (Sabtu)</label>
+                                <input type="number" id="setWeekendPrice" required placeholder="2200000" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-bold text-red-900">
                             </div>
                         </div>
                         <div>
