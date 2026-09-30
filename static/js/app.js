@@ -703,7 +703,7 @@ Nama instagram : ${guestIg}`;
 // ADMIN FUNCTIONALITIES
 // -------------------------------------------------------------
 function promptAdminLogin() {
-    const pin = prompt("Masukkan PIN Admin Pengelola (Default: 1234):");
+    const pin = prompt("Masukkan PIN Admin Pengelola:");
     if (!pin) return;
 
     const expectedPin = appSettings.admin_pin || "1234";

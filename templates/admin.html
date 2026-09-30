@@ -53,8 +53,7 @@
             <form onsubmit="handleAdminLoginSubmit(event)" class="space-y-4 pt-2">
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Masukkan PIN Admin</label>
-                    <input type="password" id="loginPinInput" value="1234" required placeholder="••••" class="w-full px-4 py-3 rounded-2xl border border-gray-300 text-center text-xl font-bold tracking-widest focus:ring-2 focus:ring-teal-500 focus:outline-none">
-                    <span class="text-[11px] text-teal-600 font-semibold block mt-1">PIN Default: 1234 (Klik Masuk di bawah)</span>
+                    <input type="password" id="loginPinInput" value="" required placeholder="••••" class="w-full px-4 py-3 rounded-2xl border border-gray-300 text-center text-xl font-bold tracking-widest focus:ring-2 focus:ring-teal-500 focus:outline-none">
                 </div>
                 <button type="submit" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 rounded-2xl shadow-lg transition text-sm flex items-center justify-center space-x-2">
                     <span>🔑 Masuk ke Dashboard Admin</span>
@@ -613,7 +612,7 @@
                         <h3 class="font-serif-title font-bold text-xl">Keamanan & Ganti PIN Admin</h3>
                     </div>
                     <p class="text-xs text-gray-600 leading-relaxed">
-                        Ubah PIN/Password login default Admin (Default: <code class="bg-amber-100 px-1.5 py-0.5 rounded text-amber-900 font-bold">1234</code>) dengan PIN baru agar Portal Admin tidak dapat diakses oleh sembarang orang.
+                        Ubah PIN/Password login Admin dengan PIN baru yang lebih aman agar Portal Admin tidak dapat diakses oleh sembarang orang.
                     </p>
                     
                     <form onsubmit="submitChangeAdminPin(event)" class="bg-amber-50/50 p-5 rounded-2xl border border-amber-200 space-y-4 max-w-md">

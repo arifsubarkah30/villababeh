@@ -106,18 +106,11 @@ def handle_settings():
         return jsonify({"status": "success", "settings": db.get_settings()})
     else:
         data = request.json or {}
-        admin_pin = data.get('admin_pin', '')
-        current_settings = db.get_settings()
-        
-        if admin_pin != current_settings.get('admin_pin', '1234'):
-            return jsonify({"status": "error", "message": "PIN Admin salah!"}), 403
+        if not data:
+            return jsonify({"status": "error", "message": "Data tidak boleh kosong"}), 400
 
-        new_settings = {k: v for k, v in data.items() if k != 'admin_pin'}
-        if 'new_admin_pin' in data and data['new_admin_pin']:
-            new_settings['admin_pin'] = data['new_admin_pin']
-
-        db.update_settings(new_settings)
-        return jsonify({"status": "success", "message": "Pengaturan villa berhasil disimpan!"})
+        db.update_settings(data)
+        return jsonify({"status": "success", "message": "Pengaturan villa berhasil disimpan!", "settings": db.get_settings()})
 
 @app.route('/api/facilities', methods=['GET', 'POST', 'DELETE'])
 def handle_facilities():
