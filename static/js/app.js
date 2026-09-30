@@ -168,26 +168,26 @@ function renderFacilitiesUI() {
         const iconName = f.icon || 'star';
         const imgUrl = f.image_url || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80';
         return `
-            <div class="bg-gray-50 border border-gray-100 rounded-3xl overflow-hidden hover:shadow-xl hover:border-emerald-200 transition duration-300 space-y-3 flex flex-col group">
-                <div class="relative h-48 w-full bg-gray-200 overflow-hidden facility-card-img-container" onclick="handleFacilityPhotoClick(${f.id}, '${imgUrl}')">
+            <div class="bg-gray-50 border border-gray-100 rounded-3xl overflow-hidden hover:shadow-xl hover:border-emerald-200 transition duration-300 flex flex-col group p-3 space-y-3">
+                <div class="relative aspect-square w-full bg-gray-200 rounded-2xl overflow-hidden facility-card-img-container cursor-pointer shadow-sm" onclick="handleFacilityPhotoClick(${f.id}, '${imgUrl}')">
                     <img src="${imgUrl}" alt="${f.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
-                    <div class="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-villa-900 px-2.5 py-1 rounded-full text-xs font-bold shadow flex items-center space-x-1">
+                    <div class="absolute top-2.5 left-2.5 bg-white/90 backdrop-blur-sm text-villa-900 px-2.5 py-1 rounded-full text-[11px] font-bold shadow flex items-center space-x-1">
                         <i data-lucide="${iconName}" class="w-3.5 h-3.5 inline"></i>
                         <span>${f.category || 'Fasilitas'}</span>
                     </div>
 
                     <!-- Admin Edit Overlay Badge -->
-                    <div class="admin-photo-badge hidden absolute inset-0 bg-slate-900/60 items-center justify-center text-white text-xs font-bold transition">
-                        <span class="bg-amber-500 text-slate-950 px-3 py-1.5 rounded-lg shadow flex items-center space-x-1">
+                    <div class="admin-photo-badge hidden absolute inset-0 bg-slate-900/60 flex items-center justify-center text-white text-xs font-bold transition">
+                        <span class="bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg shadow flex items-center space-x-1">
                             📷 Klik untuk Ubah Foto
                         </span>
                     </div>
                 </div>
 
-                <div class="p-5 pt-0 space-y-2 flex-1 flex flex-col justify-between">
+                <div class="px-1 pb-1 space-y-1 flex-1 flex flex-col justify-between">
                     <div>
-                        <h3 class="font-serif-title font-bold text-lg text-villa-900">${f.name}</h3>
-                        <p class="text-xs text-gray-600 leading-relaxed mt-1">${f.description || ''}</p>
+                        <h3 class="font-serif-title font-bold text-base sm:text-lg text-villa-900 leading-snug">${f.name}</h3>
+                        <p class="text-xs text-gray-600 leading-relaxed mt-0.5">${f.description || ''}</p>
                     </div>
                 </div>
             </div>
