@@ -1,163 +1,184 @@
 import sqlite3
 import datetime
+import os
+import shutil
 
-DB_NAME = "villa.db"
+def get_db_path():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    bundled_db = os.path.join(base_dir, "villa.db")
+    
+    # On Vercel / Serverless environment (read-only filesystem)
+    if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        tmp_db = os.path.join("/tmp", "villa.db")
+        if not os.path.exists(tmp_db):
+            if os.path.exists(bundled_db):
+                try:
+                    shutil.copy2(bundled_db, tmp_db)
+                except Exception:
+                    pass
+        return tmp_db
+    return bundled_db
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_NAME)
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    # Calendar Table (date YYYY-MM-DD, status, price, note)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS calendar (
-            date TEXT PRIMARY KEY,
-            status TEXT DEFAULT 'ready',
-            price INTEGER DEFAULT 1500000,
-            note TEXT DEFAULT ''
-        )
-    ''')
-
-    # Facilities Table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS facilities (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            description TEXT,
-            icon TEXT,
-            category TEXT DEFAULT 'Umum',
-            image_url TEXT DEFAULT ''
-        )
-    ''')
-
     try:
-        cursor.execute("ALTER TABLE facilities ADD COLUMN image_url TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    # Gallery Table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS gallery (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            image_url TEXT NOT NULL,
-            category TEXT DEFAULT 'Umum'
-        )
-    ''')
+        # Calendar Table (date YYYY-MM-DD, status, price, note)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS calendar (
+                date TEXT PRIMARY KEY,
+                status TEXT DEFAULT 'ready',
+                price INTEGER DEFAULT 1500000,
+                note TEXT DEFAULT ''
+            )
+        ''')
 
-    # Bookings Table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS bookings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guest_name TEXT NOT NULL,
-            guest_phone TEXT NOT NULL,
-            check_in TEXT NOT NULL,
-            check_out TEXT NOT NULL,
-            total_price INTEGER NOT NULL,
-            status TEXT DEFAULT 'confirmed',
-            notes TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+        # Facilities Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS facilities (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                icon TEXT,
+                category TEXT DEFAULT 'Umum',
+                image_url TEXT DEFAULT ''
+            )
+        ''')
 
-    # Payments Table (Track DP, 2nd payment, etc.)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS payments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            booking_id INTEGER NOT NULL,
-            payment_name TEXT NOT NULL,
-            amount INTEGER NOT NULL,
-            payment_date TEXT DEFAULT CURRENT_TIMESTAMP,
-            notes TEXT,
-            FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
-        )
-    ''')
+        try:
+            cursor.execute("ALTER TABLE facilities ADD COLUMN image_url TEXT DEFAULT ''")
+        except sqlite3.OperationalError:
+            pass
 
-    # Settings Table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS settings (
-            key TEXT PRIMARY KEY,
-            value TEXT
-        )
-    ''')
+        # Gallery Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS gallery (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                image_url TEXT NOT NULL,
+                category TEXT DEFAULT 'Umum'
+            )
+        ''')
 
-    # Expenses Table (Track Villa Operational & Maintenance Expenses)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS expenses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            category TEXT DEFAULT 'Operasional',
-            amount INTEGER NOT NULL,
-            expense_date TEXT NOT NULL,
-            notes TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+        # Bookings Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS bookings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guest_name TEXT NOT NULL,
+                guest_phone TEXT NOT NULL,
+                check_in TEXT NOT NULL,
+                check_out TEXT NOT NULL,
+                total_price INTEGER NOT NULL,
+                status TEXT DEFAULT 'confirmed',
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
-    default_settings = {
-        "villa_name": "Villa Babeh",
-        "tagline": "Mountain View Villa - Hunian Mewah & Asri untuk Liburan Keluarga Terbaik",
-        "description": "Villa Babeh menawarkan pengalaman menginap istimewa dengan fasilitas lengkap, kolam renang pribadi, pemandangan gunung & alam indah, dan suasana yang tenang & sejuk.",
-        "whatsapp": "6281234567890",
-        "weekday_price": "1500000",
-        "weekend_price": "2200000",
-        "address": "Jl. Raya Puncak No. 88, Bogor, Jawa Barat",
-        "admin_pin": "1234",
-        "hero_image": "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1600&q=80",
-        "villa_logo": "/static/images/logo.jpg"
-    }
+        # Payments Table (Track DP, 2nd payment, etc.)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                booking_id INTEGER NOT NULL,
+                payment_name TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                payment_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                notes TEXT,
+                FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+            )
+        ''')
 
-    for k, v in default_settings.items():
-        cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
+        # Settings Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        ''')
 
-    # Update villa_logo if empty
-    cursor.execute("SELECT value FROM settings WHERE key='villa_logo'")
-    row = cursor.fetchone()
-    if not row or not row[0]:
-        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('villa_logo', '/static/images/logo.jpg')")
+        # Expenses Table (Track Villa Operational & Maintenance Expenses)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS expenses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                category TEXT DEFAULT 'Operasional',
+                amount INTEGER NOT NULL,
+                expense_date TEXT NOT NULL,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
-    # Seed default facilities if empty
-    cursor.execute("SELECT COUNT(*) FROM facilities")
-    if cursor.fetchone()[0] == 0:
-        default_facilities = [
-            ("Kolam Renang Pribadi", "Kolam renang bersih dengan kedalaman anak & dewasa + sunbed", "swimming-pool", "Utama", "https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80"),
-            ("4 Kamar Tidur AC", "Kamar tidur luas dengan bed berkualitas hotel bintang 4 & AC dingin", "bed", "Kamar", "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80"),
-            ("Dapur & Alat BBQ Lengkap", "Dilengkapi kulkas, kompor, alat masak, dispenser, dan pemanggang BBQ", "utensils", "Fasilitas", "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80"),
-            ("Smart TV & Free WiFi", "Internet kecepatan tinggi, Netflix, YouTube, dan Sound System Karaoke", "tv", "Hiburan", "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80"),
-            ("Halaman Luas & Gazebo", "Area rumput hijau asri cocok untuk gathering, outbound, & bersantai", "trees", "Outdoor", "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80"),
-            ("Parkir Kategori 5 Mobil", "Area parkir aman dan luas di dalam benteng pagar villa", "car", "Keamanan", "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80")
-        ]
-        cursor.executemany("INSERT INTO facilities (name, description, icon, category, image_url) VALUES (?, ?, ?, ?, ?)", default_facilities)
+        default_settings = {
+            "villa_name": "Villa Babeh",
+            "tagline": "Mountain View Villa - Hunian Mewah & Asri untuk Liburan Keluarga Terbaik",
+            "description": "Villa Babeh menawarkan pengalaman menginap istimewa dengan fasilitas lengkap, kolam renang pribadi, pemandangan gunung & alam indah, dan suasana yang tenang & sejuk.",
+            "whatsapp": "6281234567890",
+            "weekday_price": "1500000",
+            "weekend_price": "2200000",
+            "address": "Jl. Raya Puncak No. 88, Bogor, Jawa Barat",
+            "admin_pin": "1234",
+            "hero_image": "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1600&q=80",
+            "villa_logo": "/static/images/logo.jpg"
+        }
 
-    # Seed default gallery if empty
-    cursor.execute("SELECT COUNT(*) FROM gallery")
-    if cursor.fetchone()[0] == 0:
-        default_gallery = [
-            ("Tampak Depan & Halaman", "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80", "Outdoor"),
-            ("Private Swimming Pool", "https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80", "Kolam"),
-            ("Ruang Keluarga & TV", "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80", "Interior"),
-            ("Kamar Utama AC", "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80", "Kamar"),
-            ("Dapur & Area BBQ", "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80", "Dapur"),
-            ("Taman & Gazebo", "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80", "Outdoor")
-        ]
-        cursor.executemany("INSERT INTO gallery (title, image_url, category) VALUES (?, ?, ?)", default_gallery)
+        for k, v in default_settings.items():
+            cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
 
-    # Seed default expenses if empty
-    cursor.execute("SELECT COUNT(*) FROM expenses")
-    if cursor.fetchone()[0] == 0:
-        default_expenses = [
-            ("Listrik & Wifi Bulan September", "Operasional", 650000, "2026-09-05", "Tagihan bulanan PLN & Biznet"),
-            ("Pembersihan Kolam & Obat Chlorine", "Kebersihan", 350000, "2026-09-10", "Beli kaporit & perawatan air kolam"),
-            ("Gaji Staf Kebersihan & Jaga Villa", "Gaji Staff", 1500000, "2026-09-28", "Honor operasional bulanan")
-        ]
-        cursor.executemany("INSERT INTO expenses (title, category, amount, expense_date, notes) VALUES (?, ?, ?, ?, ?)", default_expenses)
+        # Update villa_logo if empty
+        cursor.execute("SELECT value FROM settings WHERE key='villa_logo'")
+        row = cursor.fetchone()
+        if not row or not row[0]:
+            cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('villa_logo', '/static/images/logo.jpg')")
 
-    conn.commit()
-    conn.close()
+        # Seed default facilities if empty
+        cursor.execute("SELECT COUNT(*) FROM facilities")
+        if cursor.fetchone()[0] == 0:
+            default_facilities = [
+                ("Kolam Renang Pribadi", "Kolam renang bersih dengan kedalaman anak & dewasa + sunbed", "swimming-pool", "Utama", "https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80"),
+                ("4 Kamar Tidur AC", "Kamar tidur luas dengan bed berkualitas hotel bintang 4 & AC dingin", "bed", "Kamar", "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80"),
+                ("Dapur & Alat BBQ Lengkap", "Dilengkapi kulkas, kompor, alat masak, dispenser, dan pemanggang BBQ", "utensils", "Fasilitas", "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80"),
+                ("Smart TV & Free WiFi", "Internet kecepatan tinggi, Netflix, YouTube, dan Sound System Karaoke", "tv", "Hiburan", "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80"),
+                ("Halaman Luas & Gazebo", "Area rumput hijau asri cocok untuk gathering, outbound, & bersantai", "trees", "Outdoor", "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80"),
+                ("Parkir Kategori 5 Mobil", "Area parkir aman dan luas di dalam benteng pagar villa", "car", "Keamanan", "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80")
+            ]
+            cursor.executemany("INSERT INTO facilities (name, description, icon, category, image_url) VALUES (?, ?, ?, ?, ?)", default_facilities)
+
+        # Seed default gallery if empty
+        cursor.execute("SELECT COUNT(*) FROM gallery")
+        if cursor.fetchone()[0] == 0:
+            default_gallery = [
+                ("Tampak Depan & Halaman", "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80", "Outdoor"),
+                ("Private Swimming Pool", "https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80", "Kolam"),
+                ("Ruang Keluarga & TV", "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80", "Interior"),
+                ("Kamar Utama AC", "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80", "Kamar"),
+                ("Dapur & Area BBQ", "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80", "Dapur"),
+                ("Taman & Gazebo", "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80", "Outdoor")
+            ]
+            cursor.executemany("INSERT INTO gallery (title, image_url, category) VALUES (?, ?, ?)", default_gallery)
+
+        # Seed default expenses if empty
+        cursor.execute("SELECT COUNT(*) FROM expenses")
+        if cursor.fetchone()[0] == 0:
+            default_expenses = [
+                ("Listrik & Wifi Bulan September", "Operasional", 650000, "2026-09-05", "Tagihan bulanan PLN & Biznet"),
+                ("Pembersihan Kolam & Obat Chlorine", "Kebersihan", 350000, "2026-09-10", "Beli kaporit & perawatan air kolam"),
+                ("Gaji Staf Kebersihan & Jaga Villa", "Gaji Staff", 1500000, "2026-09-28", "Honor operasional bulanan")
+            ]
+            cursor.executemany("INSERT INTO expenses (title, category, amount, expense_date, notes) VALUES (?, ?, ?, ?, ?)", default_expenses)
+
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"init_db warning/error: {e}")
+
 
 def get_settings():
     conn = get_db_connection()

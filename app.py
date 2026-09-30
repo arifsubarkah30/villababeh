@@ -8,11 +8,22 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+if os.environ.get("VERCEL"):
+    UPLOAD_FOLDER = os.path.join('/tmp', 'uploads')
+
+try:
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+except Exception:
+    pass
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Initialize database on startup
-db.init_db()
+try:
+    db.init_db()
+except Exception as e:
+    print(f"Startup DB init warning: {e}")
+
 
 @app.route('/')
 def index():
