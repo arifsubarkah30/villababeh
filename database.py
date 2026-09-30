@@ -138,42 +138,6 @@ def init_db():
         if not row or not row[0]:
             cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('villa_logo', '/static/images/logo.jpg')")
 
-        # Seed default facilities if empty
-        cursor.execute("SELECT COUNT(*) FROM facilities")
-        if cursor.fetchone()[0] == 0:
-            default_facilities = [
-                ("Kolam Renang Pribadi", "Kolam renang bersih dengan kedalaman anak & dewasa + sunbed", "swimming-pool", "Utama", "https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80"),
-                ("4 Kamar Tidur AC", "Kamar tidur luas dengan bed berkualitas hotel bintang 4 & AC dingin", "bed", "Kamar", "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80"),
-                ("Dapur & Alat BBQ Lengkap", "Dilengkapi kulkas, kompor, alat masak, dispenser, dan pemanggang BBQ", "utensils", "Fasilitas", "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80"),
-                ("Smart TV & Free WiFi", "Internet kecepatan tinggi, Netflix, YouTube, dan Sound System Karaoke", "tv", "Hiburan", "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80"),
-                ("Halaman Luas & Gazebo", "Area rumput hijau asri cocok untuk gathering, outbound, & bersantai", "trees", "Outdoor", "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80"),
-                ("Parkir Kategori 5 Mobil", "Area parkir aman dan luas di dalam benteng pagar villa", "car", "Keamanan", "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80")
-            ]
-            cursor.executemany("INSERT INTO facilities (name, description, icon, category, image_url) VALUES (?, ?, ?, ?, ?)", default_facilities)
-
-        # Seed default gallery if empty
-        cursor.execute("SELECT COUNT(*) FROM gallery")
-        if cursor.fetchone()[0] == 0:
-            default_gallery = [
-                ("Tampak Depan & Halaman", "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80", "Outdoor"),
-                ("Private Swimming Pool", "https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80", "Kolam"),
-                ("Ruang Keluarga & TV", "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80", "Interior"),
-                ("Kamar Utama AC", "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80", "Kamar"),
-                ("Dapur & Area BBQ", "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80", "Dapur"),
-                ("Taman & Gazebo", "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80", "Outdoor")
-            ]
-            cursor.executemany("INSERT INTO gallery (title, image_url, category) VALUES (?, ?, ?)", default_gallery)
-
-        # Seed default expenses if empty
-        cursor.execute("SELECT COUNT(*) FROM expenses")
-        if cursor.fetchone()[0] == 0:
-            default_expenses = [
-                ("Listrik & Wifi Bulan September", "Operasional", 650000, "2026-09-05", "Tagihan bulanan PLN & Biznet"),
-                ("Pembersihan Kolam & Obat Chlorine", "Kebersihan", 350000, "2026-09-10", "Beli kaporit & perawatan air kolam"),
-                ("Gaji Staf Kebersihan & Jaga Villa", "Gaji Staff", 1500000, "2026-09-28", "Honor operasional bulanan")
-            ]
-            cursor.executemany("INSERT INTO expenses (title, category, amount, expense_date, notes) VALUES (?, ?, ?, ?, ?)", default_expenses)
-
         conn.commit()
         conn.close()
     except Exception as e:
