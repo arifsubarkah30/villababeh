@@ -126,7 +126,15 @@ def init_db():
             "address": "Jl. Raya Puncak No. 88, Bogor, Jawa Barat",
             "admin_pin": "1234",
             "hero_image": "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1600&q=80",
-            "villa_logo": "/static/images/logo.jpg"
+            "villa_logo": "/static/images/logo.jpg",
+            "highlight_1_title": "4 Kamar",
+            "highlight_1_sub": "AC + Bed Super King",
+            "highlight_2_title": "Private Pool",
+            "highlight_2_sub": "Kolam Renang Bersih",
+            "highlight_3_title": "30 Orang",
+            "highlight_3_sub": "Kapasitas Tamu",
+            "highlight_4_title": "Smart TV",
+            "highlight_4_sub": "Sound Karaoke & WiFi"
         }
 
         for k, v in default_settings.items():

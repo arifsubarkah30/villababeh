@@ -135,20 +135,20 @@
                 <!-- Quick Highlights -->
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
                     <div class="bg-white/10 backdrop-blur-sm border border-white/10 p-3.5 rounded-2xl text-center">
-                        <div class="text-amber-400 font-bold text-xl sm:text-2xl">4 Kamar</div>
-                        <div class="text-xs text-teal-100">AC + Bed Super King</div>
+                        <div id="hlTitle1" class="text-amber-400 font-bold text-xl sm:text-2xl">{{ settings.highlight_1_title or '4 Kamar' }}</div>
+                        <div id="hlSub1" class="text-xs text-teal-100">{{ settings.highlight_1_sub or 'AC + Bed Super King' }}</div>
                     </div>
                     <div class="bg-white/10 backdrop-blur-sm border border-white/10 p-3.5 rounded-2xl text-center">
-                        <div class="text-amber-400 font-bold text-xl sm:text-2xl">Private Pool</div>
-                        <div class="text-xs text-teal-100">Kolam Renang Bersih</div>
+                        <div id="hlTitle2" class="text-amber-400 font-bold text-xl sm:text-2xl">{{ settings.highlight_2_title or 'Private Pool' }}</div>
+                        <div id="hlSub2" class="text-xs text-teal-100">{{ settings.highlight_2_sub or 'Kolam Renang Bersih' }}</div>
                     </div>
                     <div class="bg-white/10 backdrop-blur-sm border border-white/10 p-3.5 rounded-2xl text-center">
-                        <div class="text-amber-400 font-bold text-xl sm:text-2xl">30 Orang</div>
-                        <div class="text-xs text-teal-100">Kapasitas Tamu</div>
+                        <div id="hlTitle3" class="text-amber-400 font-bold text-xl sm:text-2xl">{{ settings.highlight_3_title or '30 Orang' }}</div>
+                        <div id="hlSub3" class="text-xs text-teal-100">{{ settings.highlight_3_sub or 'Kapasitas Tamu' }}</div>
                     </div>
                     <div class="bg-white/10 backdrop-blur-sm border border-white/10 p-3.5 rounded-2xl text-center">
-                        <div class="text-amber-400 font-bold text-xl sm:text-2xl">Smart TV</div>
-                        <div class="text-xs text-teal-100">Sound Karaoke & WiFi</div>
+                        <div id="hlTitle4" class="text-amber-400 font-bold text-xl sm:text-2xl">{{ settings.highlight_4_title or 'Smart TV' }}</div>
+                        <div id="hlSub4" class="text-xs text-teal-100">{{ settings.highlight_4_sub or 'Sound Karaoke & WiFi' }}</div>
                     </div>
                 </div>
 

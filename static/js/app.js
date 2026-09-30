@@ -116,6 +116,27 @@ function renderSettingsToUI() {
         if (navLogoImg) navLogoImg.classList.add("hidden");
         if (navLogoBadge) navLogoBadge.classList.remove("hidden");
     }
+
+    // Render 4 Kotak Highlight Beranda
+    const hlTitle1 = document.getElementById("hlTitle1");
+    if (hlTitle1) hlTitle1.innerText = appSettings.highlight_1_title || "4 Kamar";
+    const hlSub1 = document.getElementById("hlSub1");
+    if (hlSub1) hlSub1.innerText = appSettings.highlight_1_sub || "AC + Bed Super King";
+
+    const hlTitle2 = document.getElementById("hlTitle2");
+    if (hlTitle2) hlTitle2.innerText = appSettings.highlight_2_title || "Private Pool";
+    const hlSub2 = document.getElementById("hlSub2");
+    if (hlSub2) hlSub2.innerText = appSettings.highlight_2_sub || "Kolam Renang Bersih";
+
+    const hlTitle3 = document.getElementById("hlTitle3");
+    if (hlTitle3) hlTitle3.innerText = appSettings.highlight_3_title || "30 Orang";
+    const hlSub3 = document.getElementById("hlSub3");
+    if (hlSub3) hlSub3.innerText = appSettings.highlight_3_sub || "Kapasitas Tamu";
+
+    const hlTitle4 = document.getElementById("hlTitle4");
+    if (hlTitle4) hlTitle4.innerText = appSettings.highlight_4_title || "Smart TV";
+    const hlSub4 = document.getElementById("hlSub4");
+    if (hlSub4) hlSub4.innerText = appSettings.highlight_4_sub || "Sound Karaoke & WiFi";
 }
 
 async function loadFacilities() {
@@ -1118,7 +1139,15 @@ function populateAdminSettingsForm() {
         "setWeekdayPrice": appSettings.weekday_price || 1500000,
         "setWeekendPrice": appSettings.weekend_price || 2200000,
         "setAddress": appSettings.address || "",
-        "setLogoUrl": appSettings.villa_logo || ""
+        "setLogoUrl": appSettings.villa_logo || "",
+        "setHlTitle1": appSettings.highlight_1_title || "4 Kamar",
+        "setHlSub1": appSettings.highlight_1_sub || "AC + Bed Super King",
+        "setHlTitle2": appSettings.highlight_2_title || "Private Pool",
+        "setHlSub2": appSettings.highlight_2_sub || "Kolam Renang Bersih",
+        "setHlTitle3": appSettings.highlight_3_title || "30 Orang",
+        "setHlSub3": appSettings.highlight_3_sub || "Kapasitas Tamu",
+        "setHlTitle4": appSettings.highlight_4_title || "Smart TV",
+        "setHlSub4": appSettings.highlight_4_sub || "Sound Karaoke & WiFi"
     };
     for (const [id, val] of Object.entries(fields)) {
         const elem = document.getElementById(id);
@@ -1309,7 +1338,15 @@ async function submitGeneralSettings(event) {
                 weekday_price: weekdayPrice,
                 weekend_price: weekendPrice,
                 address: address,
-                villa_logo: villaLogo
+                villa_logo: villaLogo,
+                highlight_1_title: document.getElementById("setHlTitle1")?.value || "4 Kamar",
+                highlight_1_sub: document.getElementById("setHlSub1")?.value || "AC + Bed Super King",
+                highlight_2_title: document.getElementById("setHlTitle2")?.value || "Private Pool",
+                highlight_2_sub: document.getElementById("setHlSub2")?.value || "Kolam Renang Bersih",
+                highlight_3_title: document.getElementById("setHlTitle3")?.value || "30 Orang",
+                highlight_3_sub: document.getElementById("setHlSub3")?.value || "Kapasitas Tamu",
+                highlight_4_title: document.getElementById("setHlTitle4")?.value || "Smart TV",
+                highlight_4_sub: document.getElementById("setHlSub4")?.value || "Sound Karaoke & WiFi"
             })
         });
 
