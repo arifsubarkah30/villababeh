@@ -731,15 +731,8 @@ function enableAdminMode() {
 function logoutAdmin() {
     isAdmin = false;
     localStorage.removeItem("villa_admin");
-
-    const banner = document.getElementById("adminModeBanner");
-    if (banner) banner.classList.add("hidden");
-
-    document.body.classList.remove("admin-mode-active");
-    renderCalendarGrid(currentYear, currentMonth);
-    renderFacilitiesUI();
-    renderGalleryUI();
-    alert("Anda telah keluar dari mode admin.");
+    localStorage.removeItem("villa_admin_pin");
+    window.location.href = "/";
 }
 
 function openSingleDateModal(dateStr, item) {

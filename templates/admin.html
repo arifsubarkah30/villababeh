@@ -1088,35 +1088,119 @@
     <script>
         // Additional Admin Portal Logic
         document.addEventListener("DOMContentLoaded", async () => {
+            const adminPin = localStorage.getItem("villa_admin_pin");
             const adminSession = localStorage.getItem("villa_admin") === "true";
-            if (adminSession) {
-                document.getElementById("adminLoginScreen").classList.add("hidden");
-                document.getElementById("adminAppLayout").classList.remove("hidden");
-                isAdmin = true;
-                await loadAdminBookings();
-                await loadExpenses();
-                switchAdminTab('dashboard');
-            } else {
-                document.getElementById("adminLoginScreen").classList.remove("hidden");
-                document.getElementById("adminAppLayout").classList.add("hidden");
+
+            if (adminSession && adminPin) {
+                try {
+                    const res = await fetch("/api/admin/verify_pin", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ pin: adminPin })
+                    });
+                    const data = await res.json();
+                    if (data.status === "success") {
+                        document.getElementById("adminLoginScreen").classList.add("hidden");
+                        document.getElementById("adminAppLayout").classList.remove("hidden");
+                        isAdmin = true;
+                        await loadAdminBookings();
+                        await loadExpenses();
+                        switchAdminTab('dashboard');
+                        return;
+                    }
+                } catch (e) {}
             }
+
+            // Lockout if invalid or missing PIN
+            localStorage.removeItem("villa_admin");
+            localStorage.removeItem("villa_admin_pin");
+            document.getElementById("adminLoginScreen").classList.remove("hidden");
+            document.getElementById("adminAppLayout").classList.add("hidden");
         });
 
         async function handleAdminLoginSubmit(e) {
             e.preventDefault();
             const pin = document.getElementById("loginPinInput").value;
-            const expected = appSettings.admin_pin || "1234";
-            if (pin === expected) {
-                localStorage.setItem("villa_admin", "true");
-                isAdmin = true;
-                document.getElementById("adminLoginScreen").classList.add("hidden");
-                document.getElementById("adminAppLayout").classList.remove("hidden");
-                await loadAdminBookings();
-                await loadExpenses();
-                switchAdminTab('dashboard');
-            } else {
-                alert("PIN Admin salah!");
+            try {
+                const res = await fetch("/api/admin/verify_pin", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ pin: pin })
+                });
+                const data = await res.json();
+                if (data.status === "success") {
+                    localStorage.setItem("villa_admin", "true");
+                    localStorage.setItem("villa_admin_pin", pin);
+                    isAdmin = true;
+                    document.getElementById("adminLoginScreen").classList.add("hidden");
+                    document.getElementById("adminAppLayout").classList.remove("hidden");
+                    await loadAdminBookings();
+                    await loadExpenses();
+                    switchAdminTab('dashboard');
+                } else {
+                    alert("🔑 ACCESS DENIED: PIN Admin yang Anda masukkan SALAH!");
+                    document.getElementById("loginPinInput").value = "";
+                }
+            } catch (e) {
+                alert("Gagal melakukan verifikasi keamanan dengan server.");
             }
+        }
+
+        function renderReportSummaryList() {
+            const container = document.getElementById("reportSummaryList");
+            if (!container) return;
+
+            const monthFilterElem = document.getElementById("filterBookingMonth");
+            const monthFilter = monthFilterElem ? monthFilterElem.value : "all";
+
+            let filtered = (allBookingsData || []).filter(b => {
+                if (monthFilter === "all") return true;
+                return b.check_in.startsWith(monthFilter);
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="p-6 text-center text-gray-400 font-medium text-xs bg-gray-50 rounded-2xl">Belum ada rincian transaksi reservasi untuk periode ini.</div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-teal-900 text-white font-bold uppercase text-[10px]">
+                            <tr>
+                                <th class="p-3">No. Invoice</th>
+                                <th class="p-3">Nama Tamu</th>
+                                <th class="p-3">Tanggal Menginap</th>
+                                <th class="p-3 text-right">Total Biaya Sewa</th>
+                                <th class="p-3 text-right">Kas Masuk (DP/Lunas)</th>
+                                <th class="p-3 text-right">Sisa Tagihan</th>
+                                <th class="p-3 text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            ${filtered.map(b => {
+                                const padId = String(b.id).padStart(3, '0');
+                                const invNo = `INV/VB/${(b.check_in || '2026-09').replace('-', '').slice(0, 6)}/${padId}`;
+                                return `
+                                    <tr class="hover:bg-teal-50/50 transition">
+                                        <td class="p-3 font-semibold text-teal-900">${invNo}</td>
+                                        <td class="p-3 font-bold text-gray-800">${b.guest_name}</td>
+                                        <td class="p-3 text-gray-600">${formatDateIndo(b.check_in)} s/d ${formatDateIndo(b.check_out)}</td>
+                                        <td class="p-3 text-right font-bold text-gray-900">${formatRupiah(b.total_price)}</td>
+                                        <td class="p-3 text-right font-bold text-emerald-700">${formatRupiah(b.total_paid || 0)}</td>
+                                        <td class="p-3 text-right font-bold text-amber-600">${formatRupiah(b.remaining_balance || 0)}</td>
+                                        <td class="p-3 text-center">
+                                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${b.payment_status === 'LUNAS' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : (b.payment_status === 'DP TERBAYAR' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-red-100 text-red-800 border border-red-300')}">
+                                                ${b.payment_status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join("")}
+                        </tbody>
+                    </table>
+                </div>
+            `;
         }
 
         function updateDashboardKPIs() {

@@ -100,6 +100,16 @@ def sync_holidays():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@app.route('/api/admin/verify_pin', methods=['POST'])
+def verify_admin_pin():
+    data = request.json or {}
+    pin = str(data.get('pin', '')).strip()
+    current_pin = str(db.get_settings().get('admin_pin', '1234')).strip()
+    if pin and pin == current_pin:
+        return jsonify({"status": "success", "message": "PIN Admin Valid!"})
+    else:
+        return jsonify({"status": "error", "message": "PIN Admin salah!"}), 401
+
 @app.route('/api/settings', methods=['GET', 'POST'])
 def handle_settings():
     if request.method == 'GET':
