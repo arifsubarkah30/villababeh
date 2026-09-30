@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ settings.villa_name }} - Mountain View Villa & Kalender Booking Interaktif</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        villa: {
+                            900: '#0E5350',
+                            800: '#167D78',
+                            700: '#1EA8A2',
+                            500: '#25C4BD',
+                            100: '#E6F8F7',
+                            gold: '#F5A623',
+                            goldhover: '#D98C15'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/custom.css">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-[#F0FAF9] text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Admin Status Banner (Shown when admin is logged in) -->
+    <div id="adminModeBanner" class="hidden admin-bar px-4 py-2.5 text-sm flex flex-wrap justify-between items-center z-50 sticky top-0 border-b border-gray-700 shadow-md">
+        <div class="flex items-center space-x-2">
+            <span class="inline-block w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping"></span>
+            <span class="font-bold text-amber-400">MODE ADMIN AKTIF</span>
+            <span class="text-xs text-gray-300 hidden md:inline">| Klik tanggal di kalender atau <strong>Klik Foto Apapun</strong> untuk ubah foto.</span>
+        </div>
+        <div class="flex items-center space-x-3">
+            <a href="/admin" class="bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition shadow flex items-center space-x-1">
+                <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 inline"></i>
+                <span>⭐ Portal Admin Khusus (/admin)</span>
+            </a>
+            <button onclick="openAdminModal()" class="bg-teal-700 hover:bg-teal-800 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition shadow flex items-center space-x-1">
+                <i data-lucide="settings" class="w-3.5 h-3.5 inline"></i>
+                <span>Pengaturan & Foto</span>
+            </button>
+            <button onclick="logoutAdmin()" class="bg-red-600 hover:bg-red-700 text-white font-medium px-3 py-1.5 rounded-lg text-xs transition">
+                Keluar
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="bg-white/95 backdrop-blur-md shadow-sm border-b border-teal-100 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center">
+            <!-- Brand Logo -->
+            <a href="#" class="flex items-center space-x-3">
+                <div id="navLogoContainer" class="w-12 h-12 rounded-2xl bg-teal-900 flex items-center justify-center text-amber-400 font-bold text-xl shadow-md overflow-hidden p-1">
+                    <img id="navLogoImg" src="{{ settings.villa_logo }}" alt="Logo" class="{% if not settings.villa_logo %}hidden{% endif %} w-full h-full object-contain rounded-xl">
+                    <span id="navLogoBadge" class="{% if settings.villa_logo %}hidden{% endif %}">VB</span>
+                </div>
+                <div>
+                    <span id="navVillaName" class="font-serif-title font-bold text-xl text-villa-900 block leading-tight">{{ settings.villa_name }}</span>
+                    <span class="text-[10px] text-teal-600 tracking-wider uppercase font-bold block">Mountain View Villa</span>
+                </div>
+            </a>
+
+            <!-- Nav Links -->
+            <div class="hidden md:flex items-center space-x-8 font-medium text-sm text-gray-700">
+                <a href="#hero" class="hover:text-villa-900 transition">Beranda</a>
+                <a href="#fasilitas" class="hover:text-villa-900 transition">Fasilitas</a>
+                <a href="#kalender" class="hover:text-villa-900 transition font-bold text-villa-700">📅 Jadwal & Harga</a>
+                <a href="#galeri" class="hover:text-villa-900 transition">Galeri Foto</a>
+                <a href="#lokasi" class="hover:text-villa-900 transition">Lokasi & Kontak</a>
+            </div>
+
+            <!-- CTA Buttons & Mobile Menu Toggle -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <a id="navWaBtn" href="https://wa.me/{{ settings.whatsapp }}" target="_blank" class="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl shadow-md flex items-center space-x-1.5 transition">
+                    <i data-lucide="message-square" class="w-4 h-4"></i>
+                    <span>Tanya WA</span>
+                </a>
+                <a href="/admin" class="bg-teal-50 hover:bg-teal-100 text-teal-800 p-2 sm:px-3 sm:py-2.5 rounded-xl text-xs transition border border-teal-200 flex items-center space-x-1 font-bold" title="Portal Admin">
+                    <i data-lucide="lock" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Admin</span>
+                </a>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-xl text-teal-900 hover:bg-teal-50 border border-teal-100 transition" title="Buka Menu Navigasi">
+                    <i data-lucide="menu" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation Drawer Menu -->
+        <div id="mobileNavDrawer" class="hidden md:hidden border-t border-teal-100 bg-white px-4 py-4 space-y-3 font-medium text-sm text-gray-700 shadow-lg animate-fade-in">
+            <a href="#hero" onclick="toggleMobileMenu()" class="block py-2 px-3 rounded-xl hover:bg-teal-50 hover:text-teal-900 font-bold transition">🏠 Beranda</a>
+            <a href="#fasilitas" onclick="toggleMobileMenu()" class="block py-2 px-3 rounded-xl hover:bg-teal-50 hover:text-teal-900 transition">✨ Fasilitas Villa</a>
+            <a href="#kalender" onclick="toggleMobileMenu()" class="block py-2 px-3 rounded-xl bg-teal-50 text-teal-900 font-bold transition">📅 Kalender Jadwal & Harga</a>
+            <a href="#galeri" onclick="toggleMobileMenu()" class="block py-2 px-3 rounded-xl hover:bg-teal-50 hover:text-teal-900 transition">📸 Galeri Foto</a>
+            <a href="#lokasi" onclick="toggleMobileMenu()" class="block py-2 px-3 rounded-xl hover:bg-teal-50 hover:text-teal-900 transition">📍 Lokasi & Kontak</a>
+            <div class="pt-2 border-t border-gray-100">
+                <a href="/admin" class="flex items-center space-x-2 py-2.5 px-3 rounded-xl bg-teal-900 text-amber-400 font-bold text-xs shadow">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                    <span>⭐ Masuk Portal khusus Admin (/admin)</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero" class="relative bg-villa-900 text-white py-16 md:py-24 overflow-hidden">
+        <!-- Background Overlay Image -->
+        <div id="heroBgImg" class="absolute inset-0 opacity-25 bg-cover bg-center" style="background-image: url('{{ settings.hero_image or 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1600&q=80' }}');"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-villa-900 via-villa-900/90 to-transparent"></div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div class="lg:col-span-7 space-y-6">
+                <div class="inline-flex items-center space-x-2 bg-amber-400/20 text-amber-300 border border-amber-400/30 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide">
+                    <i data-lucide="star" class="w-3.5 h-3.5 text-amber-400 fill-amber-400"></i>
+                    <span>Mountain View Villa - Asri & Privat</span>
+                </div>
+                <h1 id="heroTagline" class="font-serif-title text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight text-white">
+                    {{ settings.tagline }}
+                </h1>
+                <p id="heroDescription" class="text-teal-100 text-base sm:text-lg max-w-2xl leading-relaxed">
+                    {{ settings.description }}
+                </p>
+
+                <!-- Quick Highlights -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
+                    <div class="bg-white/10 backdrop-blur-sm border border-white/10 p-3.5 rounded-2xl text-center">
+                        <div class="text-amber-400 font-bold text-xl sm:text-2xl">4 Kamar</div>
+                        <div class="text-xs text-teal-100">AC + Bed Super King</div>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm border border-white/10 p-3.5 rounded-2xl text-center">
+                        <div class="text-amber-400 font-bold text-xl sm:text-2xl">Private Pool</div>
+                        <div class="text-xs text-teal-100">Kolam Renang Bersih</div>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm border border-white/10 p-3.5 rounded-2xl text-center">
+                        <div class="text-amber-400 font-bold text-xl sm:text-2xl">30 Orang</div>
+                        <div class="text-xs text-teal-100">Kapasitas Tamu</div>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm border border-white/10 p-3.5 rounded-2xl text-center">
+                        <div class="text-amber-400 font-bold text-xl sm:text-2xl">Smart TV</div>
+                        <div class="text-xs text-teal-100">Sound Karaoke & WiFi</div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-4 pt-4">
+                    <a href="#kalender" class="bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold px-6 py-3.5 rounded-xl shadow-lg transition flex items-center space-x-2">
+                        <i data-lucide="calendar" class="w-5 h-5"></i>
+                        <span>Cek Jadwal Ready & Harga</span>
+                    </a>
+                    <a href="#fasilitas" class="bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3.5 rounded-xl border border-white/20 transition flex items-center space-x-2">
+                        <i data-lucide="eye" class="w-5 h-5"></i>
+                        <span>Lihat Fasilitas</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Quick Card Hero with Admin Photo Edit Badge -->
+            <div class="lg:col-span-5 hidden lg:block">
+                <div class="bg-white rounded-3xl p-6 text-gray-800 shadow-2xl border border-gray-100 relative group">
+                    <div class="absolute -top-3 right-6 bg-teal-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow z-10">
+                        Garansi Harga Terbaik
+                    </div>
+                    <div class="relative overflow-hidden rounded-2xl mb-4 cursor-pointer" onclick="handleHeroPhotoClick()">
+                        <img id="heroCardImg" src="{{ settings.hero_image or 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80' }}" alt="Villa Exterior" class="w-full h-56 object-cover rounded-2xl">
+                        
+                        <!-- Admin Edit Overlay Badge -->
+                        <div class="admin-photo-badge hidden absolute inset-0 bg-slate-900/60 flex items-center justify-center text-white text-xs font-bold">
+                            <span class="bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg shadow flex items-center space-x-1">
+                                📷 Klik untuk Ubah Foto Utama
+                            </span>
+                        </div>
+                    </div>
+                    <h3 class="font-serif-title font-bold text-xl text-villa-900">Liburan Bebas Khawatir</h3>
+                    <p class="text-sm text-gray-600 mt-1">Cek ketersediaan tanggal secara realtime & pesan langsung tanpa ribet perantara.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content Section: Kalender Jadwal Booking & Harga -->
+    <section id="kalender" class="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        <div class="text-center max-w-3xl mx-auto space-y-3 mb-10">
+            <span class="bg-teal-100 text-teal-800 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                Realtime Calendar & Rates
+            </span>
+            <h2 class="font-serif-title text-3xl sm:text-4xl font-bold text-villa-900">
+                Jadwal Ketersediaan & Harga Per Tanggal
+            </h2>
+            <p class="text-gray-600 text-sm sm:text-base">
+                Pilih tanggal Check-in & Check-out untuk melihat total biaya menginap. Tanggal dengan warna <strong class="text-teal-700">Hijau (Ready)</strong> siap dipesan.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Calendar Card (8 cols) -->
+            <div class="lg:col-span-8 bg-white rounded-3xl p-4 sm:p-6 shadow-xl border border-teal-100">
+                
+                <!-- Calendar Month Controls -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
+                    <div class="flex items-center space-x-2">
+                        <button onclick="changeMonth(-1)" class="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
+                            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                        </button>
+                        <h3 id="calendarMonthTitle" class="font-serif-title text-xl sm:text-2xl font-bold text-villa-900 min-w-[200px] text-center">
+                            Oktober 2026
+                        </h3>
+                        <button onclick="changeMonth(1)" class="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
+                            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <button onclick="resetToToday()" class="text-xs font-semibold px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
+                            Hari Ini
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Legend Indicator Bar -->
+                <div class="flex flex-wrap items-center justify-center gap-4 text-xs font-medium mb-6 bg-teal-50/50 p-3 rounded-2xl border border-teal-100">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3.5 h-3.5 rounded-md bg-teal-100 border border-teal-500"></span>
+                        <span class="text-teal-900 font-semibold">Ready (Tersedia)</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3.5 h-3.5 rounded-md bg-red-100 border border-red-500"></span>
+                        <span class="text-red-900 font-semibold">Terbooking (Penuh)</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3.5 h-3.5 rounded-md bg-amber-100 border border-amber-500"></span>
+                        <span class="text-amber-900 font-semibold">Maintenance</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3.5 h-3.5 rounded-md bg-indigo-100 border border-indigo-600"></span>
+                        <span class="text-indigo-900 font-semibold">Tanggal Dipilih</span>
+                    </div>
+                </div>
+
+                <!-- Days Header (Minggu - Sabtu) -->
+                <div class="calendar-grid mb-2">
+                    <div class="calendar-day-header text-red-600">Min</div>
+                    <div class="calendar-day-header">Sen</div>
+                    <div class="calendar-day-header">Sel</div>
+                    <div class="calendar-day-header">Rab</div>
+                    <div class="calendar-day-header">Kam</div>
+                    <div class="calendar-day-header">Jum</div>
+                    <div class="calendar-day-header text-amber-600">Sab</div>
+                </div>
+
+                <!-- Days Cell Grid Container -->
+                <div id="calendarGrid" class="calendar-grid">
+                    <div class="col-span-7 py-12 text-center text-gray-400">Memuat kalender...</div>
+                </div>
+            </div>
+
+            <!-- Format Pemesanan WA Form Side (4 cols) -->
+            <div class="lg:col-span-4 space-y-6">
+                
+                <div class="bg-white rounded-3xl p-6 shadow-xl border border-teal-100 space-y-4">
+                    <div class="flex items-center space-x-2 border-b border-gray-100 pb-3">
+                        <span class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-base">📲</span>
+                        <div>
+                            <h3 class="font-serif-title font-bold text-lg text-villa-900">Format Pemesanan WA Admin</h3>
+                            <p class="text-[11px] text-gray-500">Isi formulir untuk pemesanan via WhatsApp Admin Villa</p>
+                        </div>
+                    </div>
+
+                    <div id="selectionSummary" class="bg-teal-50/60 border border-teal-100 rounded-2xl p-4 space-y-2 text-xs">
+                        <div class="text-gray-500 font-medium">Petunjuk:</div>
+                        <p class="text-gray-700">
+                            Klik <strong>Tanggal Check-in</strong> lalu <strong>Tanggal Check-out</strong> pada kalender ketersediaan di samping untuk mengisi tanggal & harga otomatis.
+                        </p>
+                    </div>
+
+                    <!-- Format Pemesanan Form -->
+                    <form id="bookingForm" onsubmit="submitBooking(event)" class="space-y-3 text-xs">
+                        <div>
+                            <label class="block font-bold text-gray-700 uppercase mb-1">Nama Pemesan</label>
+                            <input type="text" id="guestName" required placeholder="Contoh: Budi Santoso" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-medium focus:ring-2 focus:ring-teal-500">
+                        </div>
+
+                        <div>
+                            <label class="block font-bold text-gray-700 uppercase mb-1">Nama Pentransfer (a.n Rekening)</label>
+                            <input type="text" id="transferName" required placeholder="Contoh: Budi Santoso" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-medium focus:ring-2 focus:ring-teal-500">
+                        </div>
+
+                        <div>
+                            <label class="block font-bold text-gray-700 uppercase mb-1">No. HP / WhatsApp</label>
+                            <input type="tel" id="guestPhone" required placeholder="Contoh: 081234567890" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-medium focus:ring-2 focus:ring-teal-500">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-bold text-gray-700 uppercase mb-1">Total Tamu</label>
+                                <input type="text" id="totalGuests" required placeholder="Contoh: 10 Orang" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-medium">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-gray-700 uppercase mb-1">Nama Instagram</label>
+                                <input type="text" id="guestIg" placeholder="Contoh: @budi_villa" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-medium">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 bg-teal-50/50 p-3 rounded-xl border border-teal-100">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">Estimasi Total Harga</label>
+                                <input type="text" id="displayTotalPrice" readonly placeholder="Rp 0" class="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-teal-900 bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">Total DP (50%)</label>
+                                <input type="number" id="totalDp" placeholder="Nominal DP" class="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-emerald-700 bg-white">
+                            </div>
+                        </div>
+
+                        <div class="pt-2 space-y-2">
+                            <button type="submit" id="btnSubmitBooking" disabled class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl shadow-md transition flex items-center justify-center space-x-2 text-xs">
+                                <i data-lucide="message-circle" class="w-4 h-4"></i>
+                                <span>📲 Kirim Format Pemesanan via WhatsApp Admin</span>
+                            </button>
+                            <button type="button" onclick="resetDateSelection()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold py-2 rounded-xl text-[11px] transition">
+                                Reset Pilihan Tanggal
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Villa Pricing Information Note -->
+                <div class="bg-amber-50 rounded-3xl p-5 border border-amber-200 space-y-2 text-xs text-amber-900">
+                    <div class="font-bold text-sm text-amber-950 flex items-center space-x-2">
+                        <i data-lucide="info" class="w-4 h-4 text-amber-600"></i>
+                        <span>Informasi Pembayaran & Kontak Admin</span>
+                    </div>
+                    <ul class="list-disc list-inside space-y-1 text-gray-700">
+                        <li>Harga dasar Weekday: <strong id="infoWeekdayPrice">Rp 1.500.000</strong>/malam</li>
+                        <li>Harga dasar Weekend: <strong id="infoWeekendPrice">Rp 2.200.000</strong>/malam</li>
+                        <li>Konfirmasi ketersediaan & DP hanya via WhatsApp Admin resmi.</li>
+                        <li>Waktu Check-in: 14.00 WIB | Check-out: 12.00 WIB</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Fasilitas Section -->
+    <section id="fasilitas" class="py-16 bg-white border-t border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-2xl mx-auto mb-12 space-y-3">
+                <span class="bg-teal-100 text-teal-900 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                    Kenyamanan Utama
+                </span>
+                <h2 class="font-serif-title text-3xl sm:text-4xl font-bold text-villa-900">
+                    Fasilitas Lengkap Villa Babeh
+                </h2>
+                <p class="text-gray-600 text-sm">
+                    Nikmati beragam fasilitas eksklusif yang dirancang untuk kehangatan berkumpul bersama keluarga & sahabat.
+                    <span class="admin-hint hidden text-amber-600 font-bold block mt-1">📷 Mode Admin: Klik foto pada fasilitas untuk langsung mengubah foto!</span>
+                </p>
+            </div>
+
+            <!-- Facilities Grid Dynamic -->
+            <div id="facilitiesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Javascript will load facilities -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Galeri Foto Section -->
+    <section id="galeri" class="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center max-w-2xl mx-auto mb-12 space-y-3">
+            <span class="bg-amber-100 text-amber-900 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                Dokumentasi Visual
+            </span>
+            <h2 class="font-serif-title text-3xl sm:text-4xl font-bold text-villa-900">
+                Suasana & Galeri Foto Villa
+            </h2>
+            <p class="text-gray-600 text-sm">
+                Intip keindahan arsitektur, kenyamanan kamar, dan suasana asri sekitar villa.
+                <span class="admin-hint hidden text-amber-600 font-bold block mt-1">📷 Mode Admin: Klik foto mana saja untuk mengganti gambarnya!</span>
+            </p>
+        </div>
+
+        <div id="galleryContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Dynamic Gallery render -->
+        </div>
+    </section>
+
+    <!-- Lokasi & Kontak Section -->
+    <section id="lokasi" class="py-16 bg-villa-900 text-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div class="lg:col-span-5 space-y-6">
+                <span class="bg-amber-400/20 text-amber-300 border border-amber-400/30 px-3 py-1 rounded-full text-xs font-semibold">
+                    Lokasi Strategis & Mudah Diakses
+                </span>
+                <h2 class="font-serif-title text-3xl sm:text-4xl font-bold">
+                    Alamat & Hubungi Kami
+                </h2>
+                <p id="footerAddress" class="text-gray-300 text-sm leading-relaxed">
+                    {{ settings.address }}
+                </p>
+
+                <div class="space-y-3 text-sm text-gray-200 pt-2">
+                    <div class="flex items-center space-x-3">
+                        <i data-lucide="phone" class="w-5 h-5 text-amber-400"></i>
+                        <span>WhatsApp / Telp: <strong id="footerWaDisplay">+{{ settings.whatsapp }}</strong></span>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <i data-lucide="clock" class="w-5 h-5 text-amber-400"></i>
+                        <span>Layanan Konsultasi: 24/7 Fast Response</span>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <i data-lucide="map-pin" class="w-5 h-5 text-amber-400"></i>
+                        <span>Akses Jalan Bebas Hambatan / Mobil Masuk</span>
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <a id="footerWaBtn" href="https://wa.me/{{ settings.whatsapp }}" target="_blank" class="inline-flex items-center space-x-2 bg-teal-500 hover:bg-teal-600 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg transition text-sm">
+                        <i data-lucide="message-square" class="w-5 h-5"></i>
+                        <span>Chat WhatsApp Pengelola</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Map Embed -->
+            <div class="lg:col-span-7 bg-white/5 border border-white/10 p-4 rounded-3xl overflow-hidden shadow-2xl">
+                <div class="w-full h-80 rounded-2xl bg-slate-800 relative flex items-center justify-center overflow-hidden">
+                    <iframe title="Map Location" src="https://maps.google.com/maps?q=-6.697,106.917&hl=id&z=14&output=embed" class="w-full h-full border-0 filter grayscale opacity-85 hover:grayscale-0 transition duration-500"></iframe>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 text-gray-400 text-xs py-8 border-t border-slate-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                © <span id="copyrightYear">2026</span> <strong class="text-white">{{ settings.villa_name }}</strong>. Hak Cipta Dilindungi.
+            </div>
+            <div class="flex items-center space-x-6">
+                <a href="/admin" class="hover:text-amber-400 transition font-bold">⭐ Portal Admin Khusus (/admin)</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- SHARED MODALS (Photo, Invoice, Date, Settings, Payment) -->
+    <!-- MODAL: Photo Quick Editor -->
+    <div id="photoEditModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-fade-in">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-100">
+                <h3 class="font-serif-title font-bold text-lg text-teal-900" id="photoModalTitle">Ubah Foto</h3>
+                <button onclick="closePhotoModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="relative w-full h-48 bg-gray-100 rounded-2xl overflow-hidden border border-gray-200">
+                <img id="photoModalPreview" src="" class="w-full h-full object-cover">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">1. Unggah Dari Komputer/HP</label>
+                <input type="file" id="photoFileInput" accept="image/*" onchange="handleLocalFileUpload(event)" class="w-full text-xs text-gray-600 border border-gray-200 rounded-xl p-2 bg-gray-50">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">2. Atau Tempel Link URL Foto</label>
+                <input type="text" id="photoUrlInput" oninput="updatePhotoPreviewFromInput()" placeholder="https://..." class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs">
+            </div>
+            <div id="photoTitleGroup" class="hidden">
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Judul Foto</label>
+                <input type="text" id="photoTitleInput" placeholder="Judul foto..." class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs">
+            </div>
+            <div class="pt-3 flex space-x-3">
+                <button onclick="savePhotoEdit()" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl shadow text-xs">
+                    Simpan Perubahan Foto
+                </button>
+                <button onclick="closePhotoModal()" class="bg-gray-100 text-gray-700 px-4 py-3 rounded-xl text-xs font-semibold">
+                    Batal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Single Date Editor -->
+    <div id="singleDateModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-fade-in">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-100">
+                <h3 class="font-serif-title font-bold text-lg text-teal-900" id="modalDateTitle">Atur Tanggal YYYY-MM-DD</h3>
+                <button onclick="closeSingleDateModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <input type="hidden" id="editTargetDate">
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Status Ketersediaan</label>
+                <select id="editStatusSelect" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium">
+                    <option value="ready">🟢 Ready (Tersedia Dipesan)</option>
+                    <option value="booked">🔴 Terbooking (Sudah Dipesan)</option>
+                    <option value="maintenance">🟡 Maintenance / Renovasi</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Harga Khusus (Rp)</label>
+                <input type="number" id="editPriceInput" placeholder="Kosongkan untuk harga default" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan Tanggal</label>
+                <input type="text" id="editNoteInput" placeholder="Catatan opsional" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm">
+            </div>
+            <div class="pt-3 flex space-x-3">
+                <button onclick="saveSingleDateEdit()" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl text-sm shadow">
+                    Simpan Perubahan
+                </button>
+                <button onclick="closeSingleDateModal()" class="bg-gray-100 text-gray-700 px-4 py-3 rounded-xl text-sm font-semibold">
+                    Batal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application JavaScript -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

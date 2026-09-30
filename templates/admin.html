@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Pengelola & Investor - {{ settings.villa_name }}</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        teal: {
+                            50: '#E6F8F7',
+                            100: '#C5F0EE',
+                            500: '#25C4BD',
+                            600: '#1EA8A2',
+                            700: '#167D78',
+                            800: '#115C59',
+                            900: '#0E5350'
+                        },
+                        amber: {
+                            400: '#F5A623',
+                            500: '#D98C15'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/custom.css">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-[#F0FAF9] text-gray-800 antialiased min-h-screen flex flex-col pb-20 md:pb-0">
+
+    <!-- ADMIN LOGIN SCREEN (If not authenticated) -->
+    <div id="adminLoginScreen" class="fixed inset-0 bg-teal-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-6 text-center animate-fade-in border border-teal-100">
+            <div class="w-20 h-20 mx-auto rounded-3xl bg-teal-50 flex items-center justify-center p-2 shadow-inner">
+                <img id="loginLogoImg" src="{{ settings.villa_logo }}" alt="Logo" class="w-full h-full object-contain rounded-2xl">
+            </div>
+            <div>
+                <h2 class="font-serif-title font-bold text-2xl text-teal-900">{{ settings.villa_name }}</h2>
+                <p class="text-xs text-gray-500 font-semibold tracking-wider uppercase mt-1">Portal Khusus Pengelola & Investor</p>
+            </div>
+            
+            <form onsubmit="handleAdminLoginSubmit(event)" class="space-y-4 pt-2">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Masukkan PIN Admin</label>
+                    <input type="password" id="loginPinInput" value="1234" required placeholder="••••" class="w-full px-4 py-3 rounded-2xl border border-gray-300 text-center text-xl font-bold tracking-widest focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                    <span class="text-[11px] text-teal-600 font-semibold block mt-1">PIN Default: 1234 (Klik Masuk di bawah)</span>
+                </div>
+                <button type="submit" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 rounded-2xl shadow-lg transition text-sm flex items-center justify-center space-x-2">
+                    <span>🔑 Masuk ke Dashboard Admin</span>
+                </button>
+            </form>
+            
+            <div class="pt-2 border-t border-gray-100">
+                <a href="/" class="text-xs text-teal-700 hover:underline font-semibold">← Kembali ke Website Utama</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN STANDALONE ADMIN APPLICATION LAYOUT -->
+    <div id="adminAppLayout" class="hidden min-h-screen flex flex-col md:flex-row">
+        
+        <!-- SIDEBAR NAVIGATION (Desktop) -->
+        <aside class="hidden md:flex md:w-64 bg-teal-900 text-white flex-col justify-between p-6 shadow-2xl flex-shrink-0">
+            <div class="space-y-8">
+                <!-- Brand Logo Header -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-2xl bg-white/10 p-1 flex items-center justify-center flex-shrink-0">
+                        <img id="sideLogoImg" src="{{ settings.villa_logo }}" alt="Logo" class="w-full h-full object-contain rounded-xl">
+                    </div>
+                    <div>
+                        <h1 class="font-serif-title font-bold text-lg text-white leading-tight">{{ settings.villa_name }}</h1>
+                        <span class="text-[10px] text-teal-300 tracking-wider uppercase font-semibold block">Admin & Investor</span>
+                    </div>
+                </div>
+
+                <!-- Nav Menu Items -->
+                <nav class="space-y-1 text-xs font-bold">
+                    <button onclick="switchAdminTab('dashboard')" id="navDash" class="w-full text-left px-4 py-3 rounded-2xl bg-teal-800 text-amber-400 flex items-center space-x-3 transition">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                        <span>Dashboard & Ringkasan</span>
+                    </button>
+                    <button onclick="switchAdminTab('dates')" id="navDates" class="w-full text-left px-4 py-3 rounded-2xl text-teal-100 hover:bg-teal-800 transition flex items-center space-x-3">
+                        <i data-lucide="calendar-range" class="w-4 h-4"></i>
+                        <span>Kalender & Harga</span>
+                    </button>
+                    <button onclick="switchAdminTab('bookings')" id="navBookings" class="w-full text-left px-4 py-3 rounded-2xl text-teal-100 hover:bg-teal-800 transition flex items-center space-x-3">
+                        <i data-lucide="list-checks" class="w-4 h-4"></i>
+                        <span>Daftar Booking & DP</span>
+                    </button>
+                    <button onclick="switchAdminTab('reports')" id="navReports" class="w-full text-left px-4 py-3 rounded-2xl text-teal-100 hover:bg-teal-800 transition flex items-center space-x-3">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                        <span>Laporan Pemilik / Investor</span>
+                    </button>
+                    <button onclick="switchAdminTab('gallery')" id="navGallery" class="w-full text-left px-4 py-3 rounded-2xl text-teal-100 hover:bg-teal-800 transition flex items-center space-x-3">
+                        <i data-lucide="image" class="w-4 h-4"></i>
+                        <span>Kelola Foto & Galeri</span>
+                    </button>
+                    <button onclick="switchAdminTab('facilities')" id="navFacilities" class="w-full text-left px-4 py-3 rounded-2xl text-teal-100 hover:bg-teal-800 transition flex items-center space-x-3">
+                        <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                        <span>Fasilitas Villa</span>
+                    </button>
+                    <button onclick="switchAdminTab('settings')" id="navSettings" class="w-full text-left px-4 py-3 rounded-2xl text-teal-100 hover:bg-teal-800 transition flex items-center space-x-3">
+                        <i data-lucide="sliders" class="w-4 h-4"></i>
+                        <span>Pengaturan & Logo</span>
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Sidebar Bottom Shortcuts -->
+            <div class="pt-6 border-t border-teal-800 space-y-2 text-xs font-semibold">
+                <a href="/" target="_blank" class="flex items-center space-x-2 text-teal-200 hover:text-white transition">
+                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                    <span>Lihat Website Utama</span>
+                </a>
+                <button onclick="logoutAdmin()" class="w-full text-left flex items-center space-x-2 text-red-300 hover:text-red-100 transition pt-2">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    <span>Keluar Admin</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- TOP BAR (Mobile) -->
+        <header class="md:hidden bg-teal-900 text-white p-4 sticky top-0 z-40 flex justify-between items-center shadow-md">
+            <div class="flex items-center space-x-3">
+                <img id="mobileLogoImg" src="{{ settings.villa_logo }}" alt="Logo" class="w-9 h-9 object-contain bg-white/10 rounded-xl p-0.5">
+                <div>
+                    <h1 class="font-serif-title font-bold text-base text-white leading-tight">{{ settings.villa_name }}</h1>
+                    <span class="text-[9px] text-teal-300 uppercase font-bold tracking-wider">Dashboard Pengelola</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <a href="/" target="_blank" class="p-2 rounded-xl bg-teal-800 text-teal-200 text-xs font-bold" title="Lihat Website">
+                    <i data-lucide="globe" class="w-4 h-4"></i>
+                </a>
+                <button onclick="logoutAdmin()" class="p-2 rounded-xl bg-red-600 text-white text-xs font-bold" title="Keluar">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 p-4 sm:p-8 overflow-y-auto max-w-7xl mx-auto w-full space-y-8">
+            
+            <!-- TAB 1: EXECUTIVE DASHBOARD & OVERVIEW -->
+            <div id="tabContentDashboard" class="space-y-8 animate-fade-in">
+                
+                <!-- Welcome Banner -->
+                <div class="bg-gradient-to-r from-teal-900 via-teal-800 to-teal-700 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+                    <div class="relative z-10 space-y-2">
+                        <span class="bg-amber-400 text-slate-950 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                            Executive Portal
+                        </span>
+                        <h2 class="font-serif-title font-bold text-2xl sm:text-3xl">Selamat Datang, Pengelola {{ settings.villa_name }}</h2>
+                        <p class="text-teal-100 text-xs sm:text-sm max-w-2xl">
+                            Pantau performa keuangan, rincian pembayaran DP, tingkat reservasi, serta cetak laporan resmi untuk Pemilik Villa & Investor.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- KPI Analytical Summary Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="bg-white p-5 rounded-3xl border border-teal-100 shadow-md space-y-2">
+                        <div class="flex justify-between items-center text-xs font-bold text-gray-500 uppercase">
+                            <span>Omset Biaya</span>
+                            <span class="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold">💰</span>
+                        </div>
+                        <div id="dashKpiTotalRevenue" class="font-serif-title font-bold text-xl text-teal-900">Rp 0</div>
+                        <span class="text-[11px] text-gray-400 block">Total nilai pesanan</span>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-3xl border border-teal-100 shadow-md space-y-2">
+                        <div class="flex justify-between items-center text-xs font-bold text-gray-500 uppercase">
+                            <span>Kas Masuk (DP)</span>
+                            <span class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">💳</span>
+                        </div>
+                        <div id="dashKpiTotalPaid" class="font-serif-title font-bold text-xl text-emerald-600">Rp 0</div>
+                        <span class="text-[11px] text-emerald-600 font-semibold block">Kas terkumpul</span>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-3xl border border-teal-100 shadow-md space-y-2">
+                        <div class="flex justify-between items-center text-xs font-bold text-gray-500 uppercase">
+                            <span>Total Pengeluaran</span>
+                            <span class="w-8 h-8 rounded-xl bg-red-50 text-red-600 flex items-center justify-center font-bold">💸</span>
+                        </div>
+                        <div id="dashKpiTotalExpenses" class="font-serif-title font-bold text-xl text-red-600">Rp 0</div>
+                        <span class="text-[11px] text-red-600 font-semibold block">Biaya & operasional</span>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-3xl border border-teal-100 shadow-md space-y-2">
+                        <div class="flex justify-between items-center text-xs font-bold text-gray-500 uppercase">
+                            <span>Laba Bersih</span>
+                            <span class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">📈</span>
+                        </div>
+                        <div id="dashKpiNetProfit" class="font-serif-title font-bold text-xl text-indigo-900">Rp 0</div>
+                        <span class="text-[11px] text-indigo-700 font-semibold block">Kas masuk - pengeluaran</span>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-3xl border border-teal-100 shadow-md space-y-2">
+                        <div class="flex justify-between items-center text-xs font-bold text-gray-500 uppercase">
+                            <span>Total Booking</span>
+                            <span class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">📅</span>
+                        </div>
+                        <div id="dashKpiTotalBookings" class="font-serif-title font-bold text-2xl text-gray-900">0</div>
+                        <span class="text-[11px] text-gray-400 block">Pesanan terdaftar</span>
+                    </div>
+                </div>
+
+                <!-- Quick Action Shortcuts Bar -->
+                <div class="bg-white p-6 rounded-3xl border border-teal-100 shadow-md space-y-4">
+                    <h3 class="font-serif-title font-bold text-lg text-teal-900 flex items-center space-x-2">
+                        <i data-lucide="zap" class="w-5 h-5 text-amber-400"></i>
+                        <span>Aksi Cepat Pengelola & Investor</span>
+                    </h3>
+                    <div class="flex flex-wrap gap-3">
+                        <button onclick="switchAdminTab('reports')" class="bg-teal-500 hover:bg-teal-600 text-white font-bold px-5 py-3 rounded-2xl text-xs shadow-md transition flex items-center space-x-2">
+                            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                            <span>📈 Cetak Laporan Pemilik / Investor</span>
+                        </button>
+                        <a href="/api/reports/export" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-3 rounded-2xl text-xs shadow-md transition flex items-center space-x-2">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                            <span>📥 Download Laporan Excel (.csv)</span>
+                        </a>
+                        <button onclick="switchAdminTab('dates')" class="bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 font-bold px-5 py-3 rounded-2xl text-xs transition flex items-center space-x-2">
+                            <i data-lucide="calendar" class="w-4 h-4"></i>
+                            <span>📅 Atur Harga & Tanggal Massal</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TAB 2: KALENDER & HARGA MANAGER -->
+            <div id="tabContentDates" class="hidden space-y-6 animate-fade-in">
+                <div class="bg-white rounded-3xl p-6 shadow-md border border-teal-100 space-y-6">
+                    <div class="flex flex-wrap justify-between items-center gap-4 pb-4 border-b border-gray-100">
+                        <div>
+                            <h3 class="font-serif-title font-bold text-xl text-teal-900">Kelola Kalender Ketersediaan & Harga</h3>
+                            <span class="text-xs text-gray-500">Klik tanggal manapun di bawah untuk ubah status/harga secara langsung.</span>
+                        </div>
+                        <button onclick="syncNationalHolidays()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-2xl text-xs shadow-md transition flex items-center space-x-2">
+                            <i data-lucide="flag" class="w-4 h-4"></i>
+                            <span>🇲🇨 Sinkronkan Tanggal Merah Nasional</span>
+                        </button>
+                    </div>
+
+                    <!-- Batch Update Dates Form -->
+                    <form onsubmit="submitBatchDateUpdate(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-teal-50/50 p-5 rounded-2xl border border-teal-100 text-xs">
+                        <div>
+                            <label class="block font-bold text-gray-700 uppercase mb-1">Dari Tanggal</label>
+                            <input type="date" id="batchStartDate" required class="w-full px-3 py-2 rounded-xl border border-gray-300">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-gray-700 uppercase mb-1">Sampai Tanggal</label>
+                            <input type="date" id="batchEndDate" required class="w-full px-3 py-2 rounded-xl border border-gray-300">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-gray-700 uppercase mb-1">Status</label>
+                            <select id="batchStatus" class="w-full px-3 py-2 rounded-xl border border-gray-300 font-bold">
+                                <option value="ready">🟢 Ready (Tersedia)</option>
+                                <option value="booked">🔴 Terbooking (Sudah Dipesan)</option>
+                                <option value="maintenance">🟡 Maintenance / Tutup</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-gray-700 uppercase mb-1">Harga Khusus (Rp)</label>
+                            <input type="number" id="batchPrice" placeholder="Contoh: 2500000" class="w-full px-3 py-2 rounded-xl border border-gray-300">
+                        </div>
+                        <div class="lg:col-span-3">
+                            <input type="text" id="batchNote" placeholder="Catatan khusus (opsional)" class="w-full px-3 py-2 rounded-xl border border-gray-300">
+                        </div>
+                        <div>
+                            <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-xl shadow">
+                                Terapkan Tanggal
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Month Nav Bar -->
+                    <div class="flex items-center justify-between">
+                        <button onclick="changeMonth(-1)" class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200">
+                            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                        </button>
+                        <h4 id="calendarMonthTitle" class="font-serif-title font-bold text-xl text-teal-900">Oktober 2026</h4>
+                        <button onclick="changeMonth(1)" class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200">
+                            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Days Grid Header -->
+                    <div class="calendar-grid">
+                        <div class="calendar-day-header text-red-600">Min</div>
+                        <div class="calendar-day-header">Sen</div>
+                        <div class="calendar-day-header">Sel</div>
+                        <div class="calendar-day-header">Rab</div>
+                        <div class="calendar-day-header">Kam</div>
+                        <div class="calendar-day-header">Jum</div>
+                        <div class="calendar-day-header text-amber-600">Sab</div>
+                    </div>
+
+                    <!-- Calendar Cells -->
+                    <div id="calendarGrid" class="calendar-grid">
+                        <div class="col-span-7 py-8 text-center text-gray-400">Memuat kalender...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: DAFTAR BOOKING & SIMULASI PEMBAYARAN -->
+            <div id="tabContentBookings" class="hidden space-y-6 animate-fade-in">
+                <div class="bg-white rounded-3xl p-6 shadow-md border border-teal-100 space-y-6">
+                    
+                    <!-- Month Filter & Sorting Toolbar -->
+                    <div class="flex flex-wrap justify-between items-center gap-3 bg-teal-50/60 p-4 rounded-2xl border border-teal-100">
+                        <div class="flex flex-wrap items-center gap-3 text-xs">
+                            <label class="font-bold text-gray-700">Filter Bulan:</label>
+                            <select id="filterBookingMonth" onchange="filterAdminBookings()" class="px-3.5 py-2 rounded-xl border border-gray-300 font-bold bg-white text-xs">
+                                <option value="all">🗓️ Semua Bulan</option>
+                                <option value="2026-01">Januari 2026</option>
+                                <option value="2026-02">Februari 2026</option>
+                                <option value="2026-03">Maret 2026</option>
+                                <option value="2026-04">April 2026</option>
+                                <option value="2026-05">Mei 2026</option>
+                                <option value="2026-06">Juni 2026</option>
+                                <option value="2026-07">Juli 2026</option>
+                                <option value="2026-08">Agustus 2026</option>
+                                <option value="2026-09" selected>September 2026</option>
+                                <option value="2026-10">Oktober 2026</option>
+                                <option value="2026-11">November 2026</option>
+                                <option value="2026-12">Desember 2026</option>
+                            </select>
+
+                            <label class="font-bold text-gray-700 ml-2">Urutan:</label>
+                            <select id="sortBookingOrder" onchange="filterAdminBookings()" class="px-3.5 py-2 rounded-xl border border-gray-300 text-xs bg-white font-medium">
+                                <option value="desc">Check-In Terbaru (Terbaru -> Terlama)</option>
+                                <option value="asc">Check-In Terlama (Terlama -> Terbaru)</option>
+                            </select>
+                        </div>
+
+                        <div class="flex items-center space-x-2 text-xs">
+                            <span id="bookingStatsBadge" class="bg-teal-100 text-teal-900 font-bold px-3 py-2 rounded-xl border border-teal-200">
+                                Total: 0 Booking
+                            </span>
+                            <button onclick="loadAdminBookings()" class="bg-white hover:bg-gray-100 px-3.5 py-2 rounded-xl text-gray-700 font-medium transition border border-gray-200">
+                                🔄 Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bookings Table Responsive -->
+                    <div class="overflow-x-auto border border-gray-200 rounded-2xl">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-teal-900 text-white font-bold uppercase text-[10px]">
+                                <tr>
+                                    <th class="p-3.5">Nama Tamu</th>
+                                    <th class="p-3.5">WhatsApp</th>
+                                    <th class="p-3.5">Check-In</th>
+                                    <th class="p-3.5">Check-Out</th>
+                                    <th class="p-3.5">Total Biaya</th>
+                                    <th class="p-3.5">Status Pembayaran</th>
+                                    <th class="p-3.5 text-center">Aksi & Simulasi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bookingsTableBody" class="divide-y divide-gray-100">
+                                <tr>
+                                    <td colspan="7" class="p-4 text-center text-gray-400">Memuat riwayat booking...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: LAPORAN PEMILIK VILLA & INVESTOR -->
+            <div id="tabContentReports" class="hidden space-y-6 animate-fade-in">
+                <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-md border border-teal-100 space-y-6">
+                    
+                    <div class="flex flex-wrap justify-between items-center gap-4 pb-4 border-b border-gray-100">
+                        <div>
+                            <span class="bg-amber-100 text-amber-900 text-xs font-bold px-3 py-1 rounded-full uppercase">Laporan Eksekutif</span>
+                            <h3 class="font-serif-title font-bold text-2xl text-teal-900 mt-1">Laporan Keuangan Pemilik Villa & Investor</h3>
+                            <p class="text-xs text-gray-500">Ekspor laporan ke format Excel (.csv) atau cetak Laporan Resmi PDF untuk Investor.</p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-3">
+                            <button onclick="openExecutiveReportModal()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow flex items-center space-x-1">
+                                <i data-lucide="printer" class="w-4 h-4"></i>
+                                <span>📄 Lihat & Cetak Laporan PDF</span>
+                            </button>
+                            <a href="/api/reports/export" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow flex items-center space-x-1">
+                                <i data-lucide="download" class="w-4 h-4"></i>
+                                <span>📊 Download Excel (.csv)</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Financial Summary Breakdown Table -->
+                    <div class="space-y-4">
+                        <h4 class="font-bold text-sm text-gray-800 uppercase tracking-wider text-xs">1. Rincian Pemasukan Reservasi & Kas Masuk</h4>
+                        <div id="reportSummaryList" class="overflow-x-auto border border-gray-200 rounded-2xl">
+                            <!-- Loaded dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Input & Kelola Pengeluaran Villa -->
+                    <div class="space-y-4 pt-6 border-t border-gray-100">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="bg-red-100 text-red-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Beban & Operasional</span>
+                                <h4 class="font-serif-title font-bold text-lg text-teal-900 mt-1">💸 2. Kelola Pengeluaran & Biaya Operasional Villa</h4>
+                            </div>
+                            <span id="reportTotalExpensesBadge" class="bg-red-50 text-red-700 font-bold px-3 py-1.5 rounded-xl border border-red-200 text-xs">
+                                Total Pengeluaran: Rp 0
+                            </span>
+                        </div>
+
+                        <!-- Form Input Pengeluaran Baru -->
+                        <form onsubmit="submitAddExpense(event)" class="bg-red-50/40 p-4 rounded-2xl border border-red-100 space-y-3">
+                            <h5 class="font-bold text-xs text-red-950 uppercase">+ Catat Pengeluaran Baru</h5>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Nama / Deskripsi Pengeluaran</label>
+                                    <input type="text" id="expTitle" required placeholder="Contoh: Tagihan PLN / Beli Kaporit" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-medium">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Kategori</label>
+                                    <select id="expCategory" required class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-semibold bg-white">
+                                        <option value="Operasional">Operasional (Listrik/Air/Wifi)</option>
+                                        <option value="Kebersihan">Kebersihan & Kolam</option>
+                                        <option value="Gaji Staff">Gaji Staf / Guard</option>
+                                        <option value="Perbaikan">Perbaikan & Maintenance</option>
+                                        <option value="Perlengkapan">Perlengkapan Villa</option>
+                                        <option value="Lain-lain">Lain-lain</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Jumlah Biaya (Rp)</label>
+                                    <input type="number" id="expAmount" required placeholder="Contoh: 500000" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-bold text-red-600">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Tanggal Pengeluaran</label>
+                                    <input type="date" id="expDate" required class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-medium">
+                                </div>
+                                <div class="lg:col-span-3">
+                                    <input type="text" id="expNotes" placeholder="Catatan opsional (rincian nota/kwitansi)" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs">
+                                </div>
+                                <div>
+                                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-xl shadow text-xs transition">
+                                        + Simpan Pengeluaran
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Expenses Table -->
+                        <div class="overflow-x-auto border border-gray-200 rounded-2xl">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-red-900 text-white font-bold uppercase text-[10px]">
+                                    <tr>
+                                        <th class="p-3">Item Pengeluaran</th>
+                                        <th class="p-3">Kategori</th>
+                                        <th class="p-3">Jumlah Biaya</th>
+                                        <th class="p-3">Tanggal</th>
+                                        <th class="p-3">Catatan</th>
+                                        <th class="p-3 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="expensesTableBody" class="divide-y divide-gray-100">
+                                    <tr>
+                                        <td colspan="6" class="p-4 text-center text-gray-400">Memuat data pengeluaran...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: FOTO & GALERI MANAGER -->
+            <div id="tabContentGallery" class="hidden space-y-6 animate-fade-in">
+                <div class="bg-white rounded-3xl p-6 shadow-md border border-teal-100 space-y-6">
+                    <div class="flex justify-between items-center pb-4 border-b border-gray-100">
+                        <h3 class="font-serif-title font-bold text-xl text-teal-900">📸 Kelola Foto & Galeri Villa</h3>
+                        <button onclick="openAddNewGalleryModal()" class="bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs shadow">
+                            + Tambah Foto Baru
+                        </button>
+                    </div>
+
+                    <div id="adminGalleryList" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <!-- Dynamic render -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 6: FASILITAS VILLA MANAGER -->
+            <div id="tabContentFacilities" class="hidden space-y-6 animate-fade-in">
+                <div class="bg-white rounded-3xl p-6 shadow-md border border-teal-100 space-y-6">
+                    <h3 class="font-serif-title font-bold text-xl text-teal-900">Kelola Fasilitas Villa</h3>
+                    
+                    <form onsubmit="submitAddFacility(event)" class="bg-teal-50/50 p-4 rounded-2xl border border-teal-100 space-y-3">
+                        <h4 class="font-bold text-xs text-teal-950 uppercase">Tambah Fasilitas Baru</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <input type="text" id="facName" required placeholder="Nama Fasilitas" class="px-3 py-2 rounded-xl border border-gray-300 text-xs">
+                            <input type="text" id="facCategory" placeholder="Kategori (Utama/Kamar/Outdoor)" class="px-3 py-2 rounded-xl border border-gray-300 text-xs">
+                            <input type="text" id="facDesc" placeholder="Deskripsi Singkat" class="sm:col-span-2 px-3 py-2 rounded-xl border border-gray-300 text-xs">
+                            <input type="text" id="facImg" placeholder="URL Foto Fasilitas (Opsional)" class="sm:col-span-2 px-3 py-2 rounded-xl border border-gray-300 text-xs">
+                        </div>
+                        <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow">
+                            + Tambah Fasilitas
+                        </button>
+                    </form>
+
+                    <div id="adminFacilitiesList" class="space-y-3">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 7: PENGATURAN UMUM & LOGO -->
+            <div id="tabContentSettings" class="hidden space-y-6 animate-fade-in">
+                <div class="bg-white rounded-3xl p-6 shadow-md border border-teal-100 space-y-6">
+                    <h3 class="font-serif-title font-bold text-xl text-teal-900">Pengaturan Umum & Logo Villa</h3>
+                    
+                    <form onsubmit="submitGeneralSettings(event)" class="space-y-4 bg-teal-50/40 p-6 rounded-2xl border border-teal-100">
+                        
+                        <!-- Logo Upload Section -->
+                        <div class="bg-white p-4 rounded-2xl border border-teal-200 space-y-3 shadow-sm">
+                            <label class="block text-xs font-bold text-teal-900 uppercase flex items-center space-x-1">
+                                <span>🖼️ Logo Resmi Villa</span>
+                            </label>
+                            <div class="flex items-center space-x-4">
+                                <img id="setLogoPreview" src="{{ settings.villa_logo }}" class="w-16 h-16 rounded-2xl object-contain bg-teal-50 border border-teal-200 shadow-sm flex-shrink-0 p-1">
+                                <div class="flex-1 space-y-2">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">1. Unggah Berkas Logo dari HP / Komputer</label>
+                                        <input type="file" id="setLogoFile" accept="image/*" onchange="handleLogoUpload(event)" class="text-xs text-gray-600 border border-gray-300 rounded-xl p-1.5 bg-white w-full">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">2. Atau Tempel Link URL Logo</label>
+                                        <input type="text" id="setLogoUrl" placeholder="https://..." oninput="updateLogoPreviewFromInput()" class="w-full px-3 py-1.5 rounded-xl border border-gray-300 text-xs font-medium">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nama Villa</label>
+                            <input type="text" id="setVillaName" required class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tagline Judul Utama</label>
+                            <input type="text" id="setTagline" required class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Deskripsi Villa</label>
+                            <textarea id="setDescription" rows="2" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm"></textarea>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">No. WhatsApp Pengelola (Format 628xxx)</label>
+                                <input type="text" id="setWhatsapp" required class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">PIN Login Admin</label>
+                                <input type="password" id="setAdminPin" placeholder="PIN Baru" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Harga Dasar Weekday (Rp)</label>
+                                <input type="number" id="setWeekdayPrice" required class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Harga Dasar Weekend (Rp)</label>
+                                <input type="number" id="setWeekendPrice" required class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Alamat Lengkap Villa</label>
+                            <input type="text" id="setAddress" required class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm">
+                        </div>
+
+                        <div class="pt-2">
+                            <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-6 py-3 rounded-xl shadow text-sm">
+                                Simpan Pengaturan Villa
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- BOTTOM TOUCH NAVIGATION BAR (Mobile HP) -->
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-teal-900 text-white border-t border-teal-800 z-40 flex justify-between items-center py-2 px-2 shadow-2xl overflow-x-auto whitespace-nowrap gap-1">
+            <button onclick="switchAdminTab('dashboard')" id="mNavDash" class="flex flex-col items-center space-y-0.5 text-[10px] font-bold text-amber-400 min-w-[48px]">
+                <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                <span>Beranda</span>
+            </button>
+            <button onclick="switchAdminTab('dates')" id="mNavDates" class="flex flex-col items-center space-y-0.5 text-[10px] font-bold text-teal-200 min-w-[48px]">
+                <i data-lucide="calendar" class="w-4 h-4"></i>
+                <span>Kalender</span>
+            </button>
+            <button onclick="switchAdminTab('bookings')" id="mNavBookings" class="flex flex-col items-center space-y-0.5 text-[10px] font-bold text-teal-200 min-w-[48px]">
+                <i data-lucide="list-checks" class="w-4 h-4"></i>
+                <span>Booking</span>
+            </button>
+            <button onclick="switchAdminTab('reports')" id="mNavReports" class="flex flex-col items-center space-y-0.5 text-[10px] font-bold text-teal-200 min-w-[48px]">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                <span>Laporan</span>
+            </button>
+            <button onclick="switchAdminTab('gallery')" id="mNavGallery" class="flex flex-col items-center space-y-0.5 text-[10px] font-bold text-teal-200 min-w-[48px]">
+                <i data-lucide="image" class="w-4 h-4"></i>
+                <span>Galeri</span>
+            </button>
+            <button onclick="switchAdminTab('facilities')" id="mNavFacilities" class="flex flex-col items-center space-y-0.5 text-[10px] font-bold text-teal-200 min-w-[48px]">
+                <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                <span>Fasilitas</span>
+            </button>
+            <button onclick="switchAdminTab('settings')" id="mNavSettings" class="flex flex-col items-center space-y-0.5 text-[10px] font-bold text-teal-200 min-w-[48px]">
+                <i data-lucide="settings" class="w-4 h-4"></i>
+                <span>Setting</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- EXECUTIVE FINANCIAL REPORT MODAL (For Owner / Investor PDF Report) -->
+    <div id="executiveReportModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl space-y-6 animate-fade-in relative print:shadow-none print:max-w-none print:w-full print:p-0">
+            
+            <!-- Controls (Hidden on print) -->
+            <div class="flex justify-between items-center pb-4 border-b border-gray-100 print:hidden">
+                <div class="flex items-center space-x-2">
+                    <span class="w-8 h-8 rounded-lg bg-teal-800 text-amber-400 font-bold flex items-center justify-center text-sm">📈</span>
+                    <h3 class="font-serif-title font-bold text-lg text-teal-900">Laporan Resmi Pemilik Villa & Investor</h3>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="window.print()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition flex items-center space-x-1">
+                        <i data-lucide="printer" class="w-4 h-4"></i>
+                        <span>Cetak Laporan PDF</span>
+                    </button>
+                    <button onclick="closeExecutiveReportModal()" class="text-gray-400 hover:text-gray-600 p-1">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Printable Executive Report Document -->
+            <div id="executiveReportPrintArea" class="space-y-6 text-gray-800">
+                <!-- Header with Logo -->
+                <div class="flex justify-between items-start border-b-2 border-teal-900 pb-6">
+                    <div class="flex items-center space-x-4">
+                        <img id="rptLogoImg" src="{{ settings.villa_logo }}" alt="Logo" class="h-16 w-16 object-contain rounded-2xl bg-teal-50 p-1 border border-teal-100">
+                        <div>
+                            <h2 class="font-serif-title font-bold text-2xl text-teal-900" id="rptVillaName">{{ settings.villa_name }}</h2>
+                            <p class="text-xs text-gray-500 font-semibold tracking-wider uppercase">Laporan Keuangan & Keterisian Khusus Pemilik Villa & Investor</p>
+                            <p class="text-xs text-gray-500" id="rptAddress">{{ settings.address }}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <h1 class="font-serif-title font-bold text-xl text-gray-900">LAPORAN KEUNAGAN</h1>
+                        <p class="text-xs text-teal-800 font-bold" id="rptPeriodText">Periode: Semua Bulan</p>
+                        <p class="text-[11px] text-gray-400" id="rptPrintDate">Tanggal Cetak: 30 September 2026</p>
+                    </div>
+                </div>
+
+                <!-- Financial Summary Box -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-teal-50/60 p-4 rounded-2xl border border-teal-200 text-xs">
+                    <div>
+                        <span class="text-gray-500 block uppercase font-bold text-[10px]">Total Omset Sewa:</span>
+                        <strong id="rptTotalOmset" class="text-sm sm:text-base text-teal-900 font-bold font-serif-title">Rp 0</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 block uppercase font-bold text-[10px]">Kas Masuk (DP/Pelunasan):</span>
+                        <strong id="rptTotalKas" class="text-sm sm:text-base text-emerald-700 font-bold font-serif-title">Rp 0</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 block uppercase font-bold text-[10px]">Total Pengeluaran:</span>
+                        <strong id="rptTotalExpenses" class="text-sm sm:text-base text-red-600 font-bold font-serif-title">Rp 0</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 block uppercase font-bold text-[10px]">Keuntungan Bersih (Net):</span>
+                        <strong id="rptNetProfit" class="text-sm sm:text-base text-indigo-900 font-bold font-serif-title">Rp 0</strong>
+                    </div>
+                </div>
+
+                <!-- Table 1: Transactions -->
+                <div class="space-y-2">
+                    <h4 class="font-bold text-xs text-teal-950 uppercase tracking-wider">1. Rincian Pemasukan Reservasi</h4>
+                    <div class="border border-gray-200 rounded-2xl overflow-hidden">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-teal-900 text-white font-bold uppercase text-[10px]">
+                                <tr>
+                                    <th class="p-2.5">Inv No</th>
+                                    <th class="p-2.5">Nama Pemesan</th>
+                                    <th class="p-2.5">Check-In</th>
+                                    <th class="p-2.5">Check-Out</th>
+                                    <th class="p-2.5 text-right">Biaya Sewa</th>
+                                    <th class="p-2.5 text-right">Kas Masuk</th>
+                                    <th class="p-2.5 text-right">Sisa Tagihan</th>
+                                    <th class="p-2.5 text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rptTableBody" class="divide-y divide-gray-100">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Table 2: Expenses -->
+                <div class="space-y-2">
+                    <h4 class="font-bold text-xs text-red-950 uppercase tracking-wider">2. Rincian Pengeluaran Operasional & Perawatan Villa</h4>
+                    <div class="border border-gray-200 rounded-2xl overflow-hidden">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-red-900 text-white font-bold uppercase text-[10px]">
+                                <tr>
+                                    <th class="p-2.5">Nama Pengeluaran</th>
+                                    <th class="p-2.5">Kategori</th>
+                                    <th class="p-2.5">Tanggal</th>
+                                    <th class="p-2.5 text-right">Jumlah Biaya</th>
+                                    <th class="p-2.5">Catatan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rptExpensesTableBody" class="divide-y divide-gray-100">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Owner & Investor Signature Block -->
+                <div class="pt-8 grid grid-cols-2 text-center text-xs text-gray-700">
+                    <div>
+                        <p class="font-bold text-gray-600 mb-12">Disiapkan Oleh (Pengelola Villa)</p>
+                        <p class="font-bold border-b border-gray-400 inline-block px-8">( ________________________ )</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-600 mb-12">Disetujui Oleh (Pemilik / Investor)</p>
+                        <p class="font-bold border-b border-gray-400 inline-block px-8">( ________________________ )</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-2 flex justify-end space-x-3 print:hidden">
+                <button onclick="window.print()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow flex items-center space-x-1">
+                    <i data-lucide="printer" class="w-4 h-4"></i>
+                    <span>Cetak PDF Laporan</span>
+                </button>
+                <button onclick="closeExecutiveReportModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2.5 rounded-xl text-xs">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT MODALS (Shared Modals for Photo, Dates, Single Cell & Payments) -->
+    <!-- MODAL: Photo Quick Editor -->
+    <div id="photoEditModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-fade-in">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-100">
+                <h3 class="font-serif-title font-bold text-lg text-teal-900" id="photoModalTitle">Ubah Foto</h3>
+                <button onclick="closePhotoModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="relative w-full h-48 bg-gray-100 rounded-2xl overflow-hidden border border-gray-200">
+                <img id="photoModalPreview" src="" class="w-full h-full object-cover">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">1. Unggah Dari Komputer/HP</label>
+                <input type="file" id="photoFileInput" accept="image/*" onchange="handleLocalFileUpload(event)" class="w-full text-xs text-gray-600 border border-gray-200 rounded-xl p-2 bg-gray-50">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">2. Atau Tempel Link URL Foto</label>
+                <input type="text" id="photoUrlInput" oninput="updatePhotoPreviewFromInput()" placeholder="https://..." class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs">
+            </div>
+            <div id="photoTitleGroup" class="hidden">
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Judul Foto</label>
+                <input type="text" id="photoTitleInput" placeholder="Judul foto..." class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs">
+            </div>
+            <div class="pt-3 flex space-x-3">
+                <button onclick="savePhotoEdit()" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl shadow text-xs">
+                    Simpan Perubahan Foto
+                </button>
+                <button onclick="closePhotoModal()" class="bg-gray-100 text-gray-700 px-4 py-3 rounded-xl text-xs font-semibold">
+                    Batal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Single Date Quick Editor -->
+    <div id="singleDateModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-fade-in">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-100">
+                <h3 class="font-serif-title font-bold text-lg text-teal-900" id="modalDateTitle">Atur Tanggal YYYY-MM-DD</h3>
+                <button onclick="closeSingleDateModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <input type="hidden" id="editTargetDate">
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Status Ketersediaan</label>
+                <select id="editStatusSelect" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium">
+                    <option value="ready">🟢 Ready (Tersedia Dipesan)</option>
+                    <option value="booked">🔴 Terbooking (Sudah Dipesan)</option>
+                    <option value="maintenance">🟡 Maintenance / Renovasi</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Harga Khusus (Rp)</label>
+                <input type="number" id="editPriceInput" placeholder="Kosongkan untuk harga default" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan Tanggal</label>
+                <input type="text" id="editNoteInput" placeholder="Catatan opsional" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm">
+            </div>
+            <div class="pt-3 flex space-x-3">
+                <button onclick="saveSingleDateEdit()" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl text-sm shadow">
+                    Simpan Perubahan
+                </button>
+                <button onclick="closeSingleDateModal()" class="bg-gray-100 text-gray-700 px-4 py-3 rounded-xl text-sm font-semibold">
+                    Batal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Invoice Viewer -->
+    <div id="invoiceModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 animate-fade-in relative print:shadow-none print:max-w-none print:w-full print:p-0">
+            <div class="flex justify-between items-center pb-4 border-b border-gray-100 print:hidden">
+                <div class="flex items-center space-x-2">
+                    <span class="w-8 h-8 rounded-lg bg-teal-700 text-amber-400 font-bold flex items-center justify-center text-sm">🧾</span>
+                    <h3 class="font-serif-title font-bold text-lg text-teal-900">Invoice Pemesanan Villa</h3>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="window.print()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition flex items-center space-x-1 shadow">
+                        <i data-lucide="printer" class="w-4 h-4"></i>
+                        <span>Cetak Invoice</span>
+                    </button>
+                    <button onclick="closeInvoiceModal()" class="text-gray-400 hover:text-gray-600 p-1">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="invoicePrintArea" class="space-y-6 text-gray-800">
+                <div class="flex justify-between items-start border-b border-gray-200 pb-6">
+                    <div>
+                        <div class="flex items-center space-x-3">
+                            <img id="invLogoImg" src="{{ settings.villa_logo }}" alt="Logo" class="h-12 w-auto object-contain rounded-xl bg-teal-50 p-1 border border-teal-100">
+                            <div>
+                                <h2 class="font-serif-title font-bold text-xl text-teal-900" id="invVillaName">{{ settings.villa_name }}</h2>
+                                <p class="text-[10px] text-gray-500 font-semibold tracking-wider uppercase">Luxury Resort & Vacation</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2" id="invAddress">{{ settings.address }}</p>
+                        <p class="text-xs text-gray-500">WA: <span id="invWa">+{{ settings.whatsapp }}</span></p>
+                    </div>
+                    <div class="text-right">
+                        <span id="invStatusBadge" class="bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-emerald-300">
+                            LUNAS / TERKONFIRMASI
+                        </span>
+                        <h1 class="font-serif-title font-bold text-2xl text-gray-900 mt-2">INVOICE</h1>
+                        <p class="text-xs text-gray-500 font-semibold" id="invNumber">INV/VB/202609/001</p>
+                        <p class="text-[11px] text-gray-400" id="invCreatedDate">Tanggal: 30 September 2026</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6 bg-teal-50/50 p-4 rounded-2xl border border-teal-100 text-xs">
+                    <div>
+                        <h4 class="font-bold text-gray-500 uppercase text-[10px] mb-2">Detail Pemesan</h4>
+                        <div class="space-y-1 font-medium">
+                            <div class="text-sm font-bold text-gray-900" id="invGuestName">Budi</div>
+                            <div>No. WA: <span id="invGuestPhone">0817235374</span></div>
+                            <div id="invGuestNotesWrap" class="text-gray-500 italic">Catatan: <span id="invGuestNotes">-</span></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-gray-500 uppercase text-[10px] mb-2">Detail Reservasi</h4>
+                        <div class="space-y-1 font-medium">
+                            <div>Check-In: <strong id="invCheckIn">06 September 2026</strong> (14:00)</div>
+                            <div>Check-Out: <strong id="invCheckOut">07 September 2026</strong> (12:00)</div>
+                            <div>Durasi: <strong id="invNights" class="text-teal-700">1 Malam</strong></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border border-gray-200 rounded-2xl overflow-hidden">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-teal-900 text-white font-bold uppercase text-[10px]">
+                            <tr>
+                                <th class="p-3">Deskripsi Layanan</th>
+                                <th class="p-3 text-center">Durasi</th>
+                                <th class="p-3 text-right">Total Biaya</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr>
+                                <td class="p-3 font-semibold">
+                                    Sewa Villa Babeh (Seluruh Fasilitas & Private Pool)
+                                    <span class="block text-[10px] text-gray-500 font-normal" id="invPeriodText">Periode: 06 Sep 2026 s/d 07 Sep 2026</span>
+                                </td>
+                                <td class="p-3 text-center font-bold" id="invTableNights">1 Malam</td>
+                                <td class="p-3 text-right font-bold text-gray-900" id="invTableTotal">Rp 2.200.000</td>
+                            </tr>
+                        </tbody>
+                        <tfoot class="bg-gray-50 font-bold border-t border-gray-200">
+                            <tr>
+                                <td colspan="2" class="p-3 text-right text-xs text-gray-600 uppercase">Total Biaya Sewa:</td>
+                                <td class="p-3 text-right text-base text-gray-900 font-serif-title" id="invGrandTotal">Rp 2.200.000</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="border border-teal-200 bg-teal-50/40 rounded-2xl p-4 space-y-3">
+                    <div class="flex justify-between items-center border-b border-teal-200 pb-2">
+                        <h4 class="font-bold text-xs text-teal-950 uppercase tracking-wider">💳 SIMULASI & RINCIAN PEMBAYARAN</h4>
+                        <span id="invPaymentStatusTag" class="bg-teal-600 text-white text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full">LUNAS</span>
+                    </div>
+                    <div id="invPaymentsBreakdown" class="space-y-1.5 text-xs"></div>
+                    <div class="pt-3 border-t border-teal-200 grid grid-cols-2 text-xs font-bold">
+                        <div>
+                            <span class="text-gray-600 block text-[10px] uppercase">Total Sudah Masuk:</span>
+                            <span id="invTotalPaid" class="text-sm text-emerald-700 font-bold">Rp 0</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-gray-600 block text-[10px] uppercase">SISA PEMBAYARAN (TAGIHAN):</span>
+                            <span id="invRemainingBalance" class="text-sm text-red-600 font-bold font-serif-title">Rp 0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-gray-100 flex justify-between items-center text-[11px] text-gray-500">
+                    <div>
+                        <p class="font-bold text-gray-700">Terima kasih atas pemesanan Anda!</p>
+                        <p>Harap simpan invoice ini sebagai bukti reservasi resmi Villa Babeh.</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="w-24 border-b border-gray-400 mb-1 ml-auto"></div>
+                        <p class="font-bold text-gray-800">Pengelola Villa Babeh</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-2 flex flex-wrap gap-3 print:hidden">
+                <button onclick="sendInvoiceToWa()" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl shadow text-xs flex items-center justify-center space-x-2">
+                    <i data-lucide="message-square" class="w-4 h-4"></i>
+                    <span>Kirim Invoice via WhatsApp</span>
+                </button>
+                <button onclick="window.print()" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-4 py-3 rounded-xl text-xs flex items-center space-x-1">
+                    <i data-lucide="printer" class="w-4 h-4"></i>
+                    <span>Cetak PDF</span>
+                </button>
+                <button onclick="closeInvoiceModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold px-4 py-3 rounded-xl text-xs">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Catat Pembayaran / DP -->
+    <div id="paymentRecordModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-fade-in">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-100">
+                <div class="flex items-center space-x-2">
+                    <span class="w-8 h-8 rounded-lg bg-teal-100 text-teal-800 font-bold flex items-center justify-center text-sm">💳</span>
+                    <h3 class="font-serif-title font-bold text-lg text-teal-900">Simulasi & Input Pembayaran</h3>
+                </div>
+                <button onclick="closePaymentModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="bg-teal-50/50 p-4 rounded-2xl border border-teal-100 space-y-2 text-xs">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500">Nama Pemesan:</span>
+                    <strong id="payModalGuestName" class="text-gray-900 font-bold text-sm">-</strong>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500">Total Biaya Sewa:</span>
+                    <strong id="payModalTotalPrice" class="text-gray-900 font-bold">Rp 0</strong>
+                </div>
+                <div class="flex justify-between items-center text-emerald-700">
+                    <span>Total Pembayaran Masuk:</span>
+                    <strong id="payModalTotalPaid" class="font-bold">Rp 0</strong>
+                </div>
+                <div class="flex justify-between items-center text-red-600 pt-1 border-t border-teal-200">
+                    <span class="font-bold">SISA TAGIHAN:</span>
+                    <strong id="payModalRemaining" class="font-bold text-sm">Rp 0</strong>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <h4 class="font-bold text-xs text-gray-700 uppercase">Riwayat Pembayaran Masuk</h4>
+                <div id="payModalHistoryList" class="space-y-2 max-h-40 overflow-y-auto"></div>
+            </div>
+
+            <form onsubmit="submitNewPayment(event)" class="bg-teal-50 p-4 rounded-2xl border border-teal-100 space-y-3 pt-3">
+                <h4 class="font-bold text-xs text-teal-900 uppercase">+ Catat Pembayaran / DP Baru</h4>
+                <input type="hidden" id="payModalBookingId">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Tahap Pembayaran</label>
+                        <select id="payInputName" required class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-semibold bg-white">
+                            <option value="DP (Pembayaran 1)">DP (Pembayaran 1)</option>
+                            <option value="Pembayaran Ke-2">Pembayaran Ke-2</option>
+                            <option value="Pembayaran Ke-3">Pembayaran Ke-3</option>
+                            <option value="Pelunasan">Pelunasan Akhir</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Jumlah Bayar (Rp)</label>
+                        <input type="number" id="payInputAmount" required placeholder="Contoh: 500000" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-bold">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Tanggal Pembayaran</label>
+                    <input type="date" id="payInputDate" required class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs">
+                </div>
+
+                <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 rounded-xl shadow text-xs transition">
+                    + Simpan Catatan Pembayaran
+                </button>
+            </form>
+
+            <div class="pt-2 flex justify-end">
+                <button onclick="closePaymentModal()" class="bg-gray-100 text-gray-700 font-semibold px-4 py-2.5 rounded-xl text-xs">
+                    Selesai / Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application JavaScript -->
+    <script src="/static/js/app.js"></script>
+    <script>
+        // Additional Admin Portal Logic
+        document.addEventListener("DOMContentLoaded", async () => {
+            const adminSession = localStorage.getItem("villa_admin") === "true";
+            if (adminSession) {
+                document.getElementById("adminLoginScreen").classList.add("hidden");
+                document.getElementById("adminAppLayout").classList.remove("hidden");
+                isAdmin = true;
+                await loadAdminBookings();
+                await loadExpenses();
+                switchAdminTab('dashboard');
+            } else {
+                document.getElementById("adminLoginScreen").classList.remove("hidden");
+                document.getElementById("adminAppLayout").classList.add("hidden");
+            }
+        });
+
+        async function handleAdminLoginSubmit(e) {
+            e.preventDefault();
+            const pin = document.getElementById("loginPinInput").value;
+            const expected = appSettings.admin_pin || "1234";
+            if (pin === expected) {
+                localStorage.setItem("villa_admin", "true");
+                isAdmin = true;
+                document.getElementById("adminLoginScreen").classList.add("hidden");
+                document.getElementById("adminAppLayout").classList.remove("hidden");
+                await loadAdminBookings();
+                await loadExpenses();
+                switchAdminTab('dashboard');
+            } else {
+                alert("PIN Admin salah!");
+            }
+        }
+
+        function updateDashboardKPIs() {
+            if (!allBookingsData) return;
+            const totalRev = allBookingsData.reduce((acc, b) => acc + (b.total_price || 0), 0);
+            const totalPaid = allBookingsData.reduce((acc, b) => acc + (b.total_paid || 0), 0);
+            const totalRem = allBookingsData.reduce((acc, b) => acc + (b.remaining_balance || 0), 0);
+
+            const totalExp = (allExpensesData || []).reduce((acc, e) => acc + (e.amount || 0), 0);
+            const netProfit = totalPaid - totalExp;
+
+            const revElem = document.getElementById("dashKpiTotalRevenue");
+            if (revElem) revElem.innerText = formatRupiah(totalRev);
+
+            const paidElem = document.getElementById("dashKpiTotalPaid");
+            if (paidElem) paidElem.innerText = formatRupiah(totalPaid);
+
+            const remElem = document.getElementById("dashKpiTotalRemaining");
+            if (remElem) remElem.innerText = formatRupiah(totalRem);
+
+            const countElem = document.getElementById("dashKpiTotalBookings");
+            if (countElem) countElem.innerText = allBookingsData.length;
+
+            const expElem = document.getElementById("dashKpiTotalExpenses");
+            if (expElem) expElem.innerText = formatRupiah(totalExp);
+
+            const profitElem = document.getElementById("dashKpiNetProfit");
+            if (profitElem) profitElem.innerText = formatRupiah(netProfit);
+        }
+
+        function openExecutiveReportModal() {
+            renderExecutiveReportDocument();
+            document.getElementById("executiveReportModal").classList.remove("hidden");
+        }
+
+        function closeExecutiveReportModal() {
+            document.getElementById("executiveReportModal").classList.add("hidden");
+        }
+
+        function renderExecutiveReportDocument() {
+            const tbody = document.getElementById("rptTableBody");
+            const expTbody = document.getElementById("rptExpensesTableBody");
+            const monthFilter = document.getElementById("filterBookingMonth") ? document.getElementById("filterBookingMonth").value : 'all';
+            
+            let filtered = (allBookingsData || []).filter(b => {
+                if (monthFilter === "all") return true;
+                return b.check_in.startsWith(monthFilter);
+            });
+
+            let filteredExpenses = (allExpensesData || []).filter(e => {
+                if (monthFilter === "all") return true;
+                return e.expense_date.startsWith(monthFilter);
+            });
+
+            const totalOmset = filtered.reduce((acc, b) => acc + b.total_price, 0);
+            const totalKas = filtered.reduce((acc, b) => acc + (b.total_paid || 0), 0);
+            const totalExpenses = filteredExpenses.reduce((acc, e) => acc + (e.amount || 0), 0);
+            const netProfit = totalKas - totalExpenses;
+
+            document.getElementById("rptTotalOmset").innerText = formatRupiah(totalOmset);
+            document.getElementById("rptTotalKas").innerText = formatRupiah(totalKas);
+            document.getElementById("rptTotalExpenses").innerText = formatRupiah(totalExpenses);
+            document.getElementById("rptNetProfit").innerText = formatRupiah(netProfit);
+
+            document.getElementById("rptVillaName").innerText = appSettings.villa_name || "Villa Babeh";
+            document.getElementById("rptAddress").innerText = appSettings.address || "";
+            document.getElementById("rptPeriodText").innerText = `Periode Filter: ${monthFilter === 'all' ? 'Semua Bulan' : monthFilter}`;
+            document.getElementById("rptPrintDate").innerText = `Tanggal Cetak: ${formatDateIndo(new Date().toISOString().split("T")[0])}`;
+
+            const logoImg = document.getElementById("rptLogoImg");
+            if (logoImg && appSettings.villa_logo) logoImg.src = appSettings.villa_logo;
+
+            // Render Income Transactions
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-3 text-center text-gray-400">Belum ada transaksi.</td></tr>`;
+            } else {
+                tbody.innerHTML = filtered.map(b => {
+                    const padId = String(b.id).padStart(3, '0');
+                    const invNo = `INV/VB/${b.check_in.replace('-', '').slice(0, 6)}/${padId}`;
+                    return `
+                        <tr class="hover:bg-gray-50 text-xs">
+                            <td class="p-2 font-semibold text-gray-700">${invNo}</td>
+                            <td class="p-2 font-bold">${b.guest_name}</td>
+                            <td class="p-2">${b.check_in}</td>
+                            <td class="p-2">${b.check_out}</td>
+                            <td class="p-2 text-right font-bold">${formatRupiah(b.total_price)}</td>
+                            <td class="p-2 text-right font-bold text-emerald-700">${formatRupiah(b.total_paid || 0)}</td>
+                            <td class="p-2 text-right font-bold text-amber-600">${formatRupiah(b.remaining_balance || 0)}</td>
+                            <td class="p-2 text-center">
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${b.payment_status === 'LUNAS' ? 'bg-emerald-100 text-emerald-800' : (b.payment_status === 'DP TERBAYAR' ? 'bg-amber-100 text-amber-900' : 'bg-red-100 text-red-800')}">
+                                    ${b.payment_status}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                }).join("");
+            }
+
+            // Render Expenses
+            if (!expTbody) return;
+            if (filteredExpenses.length === 0) {
+                expTbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-400">Belum ada pengeluaran.</td></tr>`;
+            } else {
+                expTbody.innerHTML = filteredExpenses.map(e => `
+                    <tr class="hover:bg-gray-50 text-xs">
+                        <td class="p-2 font-semibold text-gray-800">${e.title}</td>
+                        <td class="p-2"><span class="bg-gray-100 text-gray-700 font-bold px-1.5 py-0.5 rounded text-[9px]">${e.category || 'Operasional'}</span></td>
+                        <td class="p-2 text-gray-600">${e.expense_date}</td>
+                        <td class="p-2 text-right font-bold text-red-600">${formatRupiah(e.amount)}</td>
+                        <td class="p-2 text-gray-500 italic">${e.notes || '-'}</td>
+                    </tr>
+                `).join("");
+            }
+        }
+    </script>
+</body>
+</html>
