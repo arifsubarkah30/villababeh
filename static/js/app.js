@@ -435,18 +435,37 @@ function renderMonthReleaseUI(year, month, isReleased) {
         }
     }
 
-    // Public Home Page Notice Bar
+    // Public Home Page Big NOT AVAILABLE Banner
     const publicNotice = document.getElementById("publicMonthReleaseNotice");
     if (publicNotice && !isAdmin) {
         if (!isReleased) {
-            publicNotice.className = "bg-amber-50 border border-amber-300 text-amber-950 p-3.5 rounded-2xl mb-4 text-xs font-semibold flex flex-wrap items-center justify-between gap-2 shadow-sm animate-fade-in";
+            publicNotice.className = "block";
+            const waMsg = encodeURIComponent(`Halo Admin Villa Babeh, saya ingin menanyakan ketersediaan & harga sewa untuk bulan ${monthNamesId[month - 1]} ${year}`);
             publicNotice.innerHTML = `
-                <div class="flex items-center space-x-2">
-                    <span class="text-base">🔒</span>
-                    <span>Jadwal & harga sewa untuk <strong>${monthNamesId[month - 1]} ${year}</strong> belum dirilis resmi oleh pengelola. Status sementara: <em>Not Available</em>.</span>
+                <div class="bg-gradient-to-br from-amber-500/10 via-amber-100/80 to-amber-50 border-2 border-amber-300 rounded-3xl p-6 text-center space-y-3 shadow-md mb-6 animate-fade-in">
+                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500 text-white font-bold text-2xl shadow-md">
+                        🔒
+                    </div>
+                    <div>
+                        <span class="bg-amber-200 text-amber-950 text-[10px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider">
+                            Status Bulan Ini
+                        </span>
+                        <h3 class="font-serif-title font-extrabold text-2xl sm:text-3xl text-amber-950 mt-1">
+                            NOT AVAILABLE / BELUM DIRILIS
+                        </h3>
+                    </div>
+                    <p class="text-xs sm:text-sm text-amber-900 max-w-lg mx-auto leading-relaxed font-medium">
+                        Jadwal & harga sewa resmi untuk bulan <strong>${monthNamesId[month - 1]} ${year}</strong> belum dirilis oleh pengelola. Tanggal belum dapat dipesan secara langsung di web.
+                    </p>
+                    <div class="pt-1">
+                        <a href="https://wa.me/${appSettings.whatsapp || '6281234567890'}?text=${waMsg}" target="_blank" class="inline-flex items-center space-x-2 bg-amber-600 hover:bg-amber-700 text-white font-bold px-6 py-3 rounded-2xl text-xs shadow-md transition">
+                            <i data-lucide="message-circle" class="w-4 h-4"></i>
+                            <span>📲 Tanya Ketersediaan Bulan Ini via WA Admin</span>
+                        </a>
+                    </div>
                 </div>
-                <a href="https://wa.me/${appSettings.whatsapp || '6281234567890'}" target="_blank" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-xl font-bold text-[11px] shadow">Tanya Admin WA</a>
             `;
+            if (window.lucide) lucide.createIcons();
         } else {
             publicNotice.className = "hidden";
         }
@@ -529,7 +548,7 @@ function renderCalendarGrid(year, month) {
             statusText = "Maint";
         } else if (item.status === "not_available") {
             statusClass = "cell-not-available";
-            statusText = "Draft";
+            statusText = "🔒 Draft";
         }
 
         let isSelected = false;
@@ -553,15 +572,19 @@ function renderCalendarGrid(year, month) {
         cell.className = `calendar-cell ${statusClass} animate-fade-in`;
         cell.onclick = () => handleCellClick(dateStr, item);
 
+        const priceHTML = (item.status === 'not_available' && !isAdmin) ? '' : `
+            <div class="price-tag ${isHoliday ? 'text-red-700 font-extrabold' : ''}">
+                ${formatShortRupiah(item.price)}
+            </div>
+        `;
+
         cell.innerHTML = `
             <div class="flex justify-between items-start">
                 <span class="date-number ${isHoliday ? 'text-red-700 font-extrabold' : ''}">${dayNum}</span>
                 <span class="cell-status-badge">${statusText}</span>
             </div>
             ${item.note ? `<div class="text-[9px] truncate font-bold ${isHoliday ? 'text-red-700 bg-red-100 px-1 rounded mt-0.5' : 'opacity-80'}" title="${item.note}">${item.note}</div>` : ''}
-            <div class="price-tag ${isHoliday ? 'text-red-700 font-extrabold' : ''}">
-                ${item.status === 'not_available' ? 'Not Avail' : formatShortRupiah(item.price)}
-            </div>
+            ${priceHTML}
         `;
 
         grid.appendChild(cell);
