@@ -546,52 +546,46 @@ function updateSelectionUI() {
     const summary = document.getElementById("selectionSummary");
     const btn = document.getElementById("btnSubmitBooking");
 
+    if (!summary) return;
+
     if (!checkInDate) {
-        summary.className = "bg-emerald-50/60 border border-emerald-100 rounded-2xl p-4 space-y-3";
+        summary.className = "bg-teal-50/70 border border-teal-200 rounded-2xl p-4 space-y-2 text-xs";
         summary.innerHTML = `
-            <div class="text-xs text-gray-500 font-medium">Petunjuk:</div>
-            <p class="text-sm text-gray-700">
-                Klik <strong>Tanggal Check-in</strong> lalu <strong>Tanggal Check-out</strong> pada kalender di samping untuk menghitung harga otomatis.
-            </p>
+            <div class="flex justify-between items-center text-teal-900 font-bold uppercase text-[10px] tracking-wider">
+                <span>📅 Rencana Tanggal Menginap</span>
+            </div>
+            <div class="text-xs text-gray-600 leading-snug">
+                Silakan pilih <strong>Tanggal Check-in</strong> lalu <strong>Tanggal Check-out</strong> pada kalender ketersediaan di samping.
+            </div>
         `;
         if (btn) btn.disabled = true;
         return;
     }
 
     if (checkInDate && !checkOutDate) {
-        summary.className = "bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2";
+        summary.className = "bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2 text-xs";
         summary.innerHTML = `
-            <div class="text-xs font-bold text-amber-900 uppercase">Check-in Dipilih:</div>
-            <div class="font-bold text-base text-amber-950">${formatDateIndo(checkInDate)}</div>
-            <p class="text-xs text-amber-800">Sekarang klik <strong>Tanggal Check-out</strong> pada kalender.</p>
+            <div class="flex justify-between items-center text-amber-900 font-bold uppercase text-[10px] tracking-wider">
+                <span>Check-in Dipilih:</span>
+            </div>
+            <div class="font-bold text-sm text-amber-950">${formatDateIndo(checkInDate)}</div>
+            <p class="text-[11px] text-amber-800">Sekarang klik <strong>Tanggal Check-out</strong> pada kalender.</p>
         `;
         if (btn) btn.disabled = true;
         return;
     }
 
     const nights = calculateNights(checkInDate, checkOutDate);
-    const totalPrice = calculateTotalPriceRange(checkInDate, checkOutDate);
-    const defaultDp = Math.round(totalPrice / 2);
 
-    const displayPriceElem = document.getElementById("displayTotalPrice");
-    if (displayPriceElem) displayPriceElem.value = formatRupiah(totalPrice);
-
-    const totalDpElem = document.getElementById("totalDp");
-    if (totalDpElem && !totalDpElem.value) totalDpElem.value = defaultDp;
-
-    summary.className = "bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-3 animate-fade-in";
+    summary.className = "bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-2 text-xs animate-fade-in";
     summary.innerHTML = `
         <div class="flex justify-between items-center text-xs font-bold text-indigo-900 uppercase">
-            <span>Pilihan Tanggal</span>
+            <span>📅 Rencana Tanggal Menginap</span>
             <span class="bg-indigo-600 text-white px-2 py-0.5 rounded-full text-[10px]">${nights} Malam</span>
         </div>
-        <div class="text-xs space-y-1 text-gray-700">
-            <div>Check-in: <strong class="text-indigo-950">${formatDateIndo(checkInDate)}</strong> (14:00 WIB)</div>
-            <div>Check-out: <strong class="text-indigo-950">${formatDateIndo(checkOutDate)}</strong> (12:00 WIB)</div>
-        </div>
-        <div class="pt-2 border-t border-indigo-100 flex justify-between items-center">
-            <span class="text-xs font-bold text-gray-600">Estimasi Biaya:</span>
-            <span class="font-serif-title font-bold text-xl text-emerald-700">${formatRupiah(totalPrice)}</span>
+        <div class="text-xs space-y-1 text-gray-800 pt-1">
+            <div>Check-In: <strong class="text-indigo-950">${formatDateIndo(checkInDate)}</strong> (14:00 WIB)</div>
+            <div>Check-Out: <strong class="text-indigo-950">${formatDateIndo(checkOutDate)}</strong> (12:00 WIB)</div>
         </div>
     `;
 
@@ -601,10 +595,6 @@ function updateSelectionUI() {
 function resetDateSelection() {
     checkInDate = null;
     checkOutDate = null;
-    const displayPriceElem = document.getElementById("displayTotalPrice");
-    if (displayPriceElem) displayPriceElem.value = "";
-    const totalDpElem = document.getElementById("totalDp");
-    if (totalDpElem) totalDpElem.value = "";
     updateSelectionUI();
     renderCalendarGrid(currentYear, currentMonth);
 }
@@ -645,23 +635,14 @@ async function submitBooking(event) {
     }
 
     const guestName = document.getElementById("guestName").value;
-    const transferNameElem = document.getElementById("transferName");
-    const transferName = transferNameElem && transferNameElem.value ? transferNameElem.value : guestName;
-
     const guestPhone = document.getElementById("guestPhone").value;
     const totalGuestsElem = document.getElementById("totalGuests");
     const totalGuests = totalGuestsElem && totalGuestsElem.value ? totalGuestsElem.value : "10 Orang";
-
     const guestIgElem = document.getElementById("guestIg");
     const guestIg = guestIgElem && guestIgElem.value ? guestIgElem.value : "-";
 
     const nights = calculateNights(checkInDate, checkOutDate);
     const totalPrice = calculateTotalPriceRange(checkInDate, checkOutDate);
-    const defaultDp = Math.round(totalPrice / 2);
-
-    const totalDpElem = document.getElementById("totalDp");
-    const totalDpVal = totalDpElem && totalDpElem.value ? parseInt(totalDpElem.value) : defaultDp;
-
     const datesText = `${formatDateIndo(checkInDate)} s/d ${formatDateIndo(checkOutDate)} (${nights} Malam)`;
 
     try {
@@ -673,7 +654,8 @@ async function submitBooking(event) {
                 guest_phone: guestPhone,
                 check_in: checkInDate,
                 check_out: checkOutDate,
-                notes: `Pentransfer: ${transferName} | Tamu: ${totalGuests} | IG: ${guestIg} | DP: ${formatRupiah(totalDpVal)}`
+                total_price: totalPrice,
+                notes: `Tamu: ${totalGuests} | IG: ${guestIg}`
             })
         });
     } catch (e) {}
@@ -682,12 +664,9 @@ async function submitBooking(event) {
     const message = `Format pemesanan 
 
 Nama pemesan : ${guestName}
-Nama pentransfer : ${transferName}
 Hp : ${guestPhone}
 Tgl menginap : ${datesText}
 Total tamu : ${totalGuests}
-Total harga : ${formatRupiah(totalPrice)}
-Total DP : ${formatRupiah(totalDpVal)}
 Nama instagram : ${guestIg}`;
 
     const waNumber = appSettings.whatsapp || "6281234567890";
