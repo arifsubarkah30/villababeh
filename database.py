@@ -113,16 +113,24 @@ def get_db_path():
 def get_db_connection():
     db_url = os.environ.get("DATABASE_URL")
     if db_url:
-        import psycopg2
-        if db_url.startswith("postgres://"):
-            db_url = db_url.replace("postgres://", "postgresql://", 1)
-        conn = psycopg2.connect(db_url)
-        return PgConnWrapper(conn)
-    else:
-        db_path = get_db_path()
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            import psycopg2
+            url_to_use = db_url.replace("postgres://", "postgresql://", 1)
+            if "sslmode" not in url_to_use:
+                separator = "&" if "?" in url_to_use else "?"
+                url_to_use += f"{separator}sslmode=require"
+            try:
+                conn = psycopg2.connect(url_to_use)
+            except Exception:
+                conn = psycopg2.connect(db_url.replace("postgres://", "postgresql://", 1))
+            return PgConnWrapper(conn)
+        except Exception as e:
+            print(f"Supabase PG connect error ({e}), falling back to SQLite.")
+    
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
     try:
