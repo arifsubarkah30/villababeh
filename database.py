@@ -3,11 +3,96 @@ import datetime
 import os
 import shutil
 
+class PgRowWrapper:
+    def __init__(self, record):
+        self._record = dict(record) if record else {}
+
+    def __getitem__(self, item):
+        return self._record.get(item)
+
+    def get(self, key, default=None):
+        return self._record.get(key, default)
+
+    def keys(self):
+        return self._record.keys()
+
+class PgCursorWrapper:
+    def __init__(self, pg_cursor):
+        self._cursor = pg_cursor
+        self.lastrowid = None
+
+    def execute(self, sql, params=None):
+        params = params or ()
+        sql_conv = sql.replace("?", "%s")
+        if "INSERT OR REPLACE INTO settings" in sql_conv:
+            sql_conv = sql_conv.replace(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES (%s, %s)",
+                "INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value"
+            )
+        elif "INSERT OR REPLACE INTO calendar" in sql_conv:
+            sql_conv = sql_conv.replace(
+                "INSERT OR REPLACE INTO calendar (date, status, price, note) VALUES (%s, %s, %s, %s)",
+                "INSERT INTO calendar (date, status, price, note) VALUES (%s, %s, %s, %s) ON CONFLICT (date) DO UPDATE SET status = EXCLUDED.status, price = EXCLUDED.price, note = EXCLUDED.note"
+            )
+        elif "INSERT OR IGNORE INTO pricing_rules" in sql_conv:
+            sql_conv = sql_conv.replace(
+                "INSERT OR IGNORE INTO pricing_rules (day_of_week, category, price) VALUES (%s, %s, %s)",
+                "INSERT INTO pricing_rules (day_of_week, category, price) VALUES (%s, %s, %s) ON CONFLICT (day_of_week) DO NOTHING"
+            )
+        elif "INSERT OR IGNORE INTO settings" in sql_conv:
+            sql_conv = sql_conv.replace(
+                "INSERT OR IGNORE INTO settings (key, value) VALUES (%s, %s)",
+                "INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING"
+            )
+
+        if any(tok in sql_conv for tok in ["INSERT INTO bookings", "INSERT INTO payments", "INSERT INTO expenses", "INSERT INTO facilities", "INSERT INTO gallery"]):
+            if "RETURNING" not in sql_conv:
+                sql_conv = sql_conv + " RETURNING id"
+                self._cursor.execute(sql_conv, params)
+                res = self._cursor.fetchone()
+                if res:
+                    self.lastrowid = res["id"] if isinstance(res, dict) else res[0]
+                return self
+
+        self._cursor.execute(sql_conv, params)
+        return self
+
+    def executemany(self, sql, params_list):
+        for params in params_list:
+            self.execute(sql, params)
+        return self
+
+    def fetchone(self):
+        row = self._cursor.fetchone()
+        return PgRowWrapper(row) if row else None
+
+    def fetchall(self):
+        rows = self._cursor.fetchall()
+        return [PgRowWrapper(r) for r in rows]
+
+class PgConnWrapper:
+    def __init__(self, pg_conn):
+        self._conn = pg_conn
+
+    def cursor(self):
+        import psycopg2.extras
+        return PgCursorWrapper(self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor))
+
+    def execute(self, sql, params=None):
+        cur = self.cursor()
+        cur.execute(sql, params)
+        return cur
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
 def get_db_path():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     bundled_db = os.path.join(base_dir, "villa.db")
     
-    # On Vercel / Serverless environment (read-only filesystem)
     if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
         tmp_db = os.path.join("/tmp", "villa.db")
         if not os.path.exists(tmp_db):
@@ -20,22 +105,51 @@ def get_db_path():
     return bundled_db
 
 def get_db_connection():
-    db_path = get_db_path()
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+    db_url = os.environ.get("DATABASE_URL")
+    if db_url:
+        import psycopg2
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+        conn = psycopg2.connect(db_url)
+        return PgConnWrapper(conn)
+    else:
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
 
 def init_db():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        # Pricing Rules Table (day_of_week PRIMARY KEY, category, price NUMERIC)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS pricing_rules (
+                day_of_week TEXT PRIMARY KEY,
+                category TEXT NOT NULL,
+                price NUMERIC NOT NULL
+            )
+        ''')
+
+        default_pricing_rules = [
+            ("Sunday", "WEEKDAY", 1800000),
+            ("Monday", "WEEKDAY", 1800000),
+            ("Tuesday", "WEEKDAY", 1800000),
+            ("Wednesday", "WEEKDAY", 1800000),
+            ("Thursday", "WEEKDAY", 1800000),
+            ("Friday", "MIDDLE", 2200000),
+            ("Saturday", "WEEKEND", 3850000)
+        ]
+        for day, cat, pr in default_pricing_rules:
+            cursor.execute("INSERT OR IGNORE INTO pricing_rules (day_of_week, category, price) VALUES (?, ?, ?)", (day, cat, pr))
+
         # Calendar Table (date YYYY-MM-DD, status, price, note)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS calendar (
                 date TEXT PRIMARY KEY,
                 status TEXT DEFAULT 'ready',
-                price INTEGER DEFAULT 1500000,
+                price INTEGER DEFAULT 1800000,
                 note TEXT DEFAULT ''
             )
         ''')
@@ -121,9 +235,9 @@ def init_db():
             "tagline": "Mountain View Villa - Hunian Mewah & Asri untuk Liburan Keluarga Terbaik",
             "description": "Villa Babeh menawarkan pengalaman menginap istimewa dengan fasilitas lengkap, kolam renang pribadi, pemandangan gunung & alam indah, dan suasana yang tenang & sejuk.",
             "whatsapp": "6281295398434",
-            "weekday_price": "1500000",
-            "middle_price": "1800000",
-            "weekend_price": "2200000",
+            "weekday_price": "1800000",
+            "middle_price": "2200000",
+            "weekend_price": "3850000",
             "address": "Jl. Raya Puncak No. 88, Bogor, Jawa Barat",
             "admin_pin": "1234",
             "hero_image": "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1600&q=80",
@@ -185,12 +299,143 @@ def get_settings():
     conn.close()
     return {row["key"]: row["value"] for row in rows}
 
-def update_settings(settings_dict):
+def get_pricing_rules():
     conn = get_db_connection()
-    for k, v in settings_dict.items():
-        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (k, str(v)))
+    rows = conn.execute("SELECT day_of_week, category, price FROM pricing_rules").fetchall()
+    conn.close()
+    rules = {}
+    for r in rows:
+        rules[r["day_of_week"]] = {
+            "category": r["category"],
+            "price": int(r["price"])
+        }
+    
+    defaults = {
+        "Sunday": {"category": "WEEKDAY", "price": 1800000},
+        "Monday": {"category": "WEEKDAY", "price": 1800000},
+        "Tuesday": {"category": "WEEKDAY", "price": 1800000},
+        "Wednesday": {"category": "WEEKDAY", "price": 1800000},
+        "Thursday": {"category": "WEEKDAY", "price": 1800000},
+        "Friday": {"category": "MIDDLE", "price": 2200000},
+        "Saturday": {"category": "WEEKEND", "price": 3850000},
+    }
+    for day, item in defaults.items():
+        if day not in rules:
+            rules[day] = item
+    return rules
+
+def update_pricing_rule_by_category(category, price):
+    conn = get_db_connection()
+    conn.execute("UPDATE pricing_rules SET price = ? WHERE category = ?", (price, category))
     conn.commit()
     conn.close()
+
+def update_settings(settings_dict):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    for k, v in settings_dict.items():
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (k, str(v)))
+        
+        # Sync pricing_rules table automatically
+        if k == "weekday_price":
+            try:
+                cursor.execute("UPDATE pricing_rules SET price = ? WHERE category = 'WEEKDAY'", (int(v),))
+            except Exception:
+                pass
+        elif k == "middle_price":
+            try:
+                cursor.execute("UPDATE pricing_rules SET price = ? WHERE category = 'MIDDLE'", (int(v),))
+            except Exception:
+                pass
+        elif k == "weekend_price":
+            try:
+                cursor.execute("UPDATE pricing_rules SET price = ? WHERE category = 'WEEKEND'", (int(v),))
+            except Exception:
+                pass
+
+    conn.commit()
+    conn.close()
+
+INDONESIAN_DAYS = {
+    "Sunday": "Minggu",
+    "Monday": "Senin",
+    "Tuesday": "Selasa",
+    "Wednesday": "Rabu",
+    "Thursday": "Kamis",
+    "Friday": "Jumat",
+    "Saturday": "Sabtu"
+}
+
+def get_night_price(date_obj, conn=None):
+    close_conn = False
+    if conn is None:
+        conn = get_db_connection()
+        close_conn = True
+
+    date_str = date_obj.strftime("%Y-%m-%d")
+    day_name_en = date_obj.strftime("%A")
+    day_name_id = INDONESIAN_DAYS.get(day_name_en, day_name_en)
+
+    # Priority 1: SPECIAL DATE PRICE (custom price explicitly set in calendar table for this exact date)
+    row = conn.execute("SELECT price, note FROM calendar WHERE date = ?", (date_str,)).fetchone()
+    if row and row["price"] is not None and row["price"] > 0:
+        price = int(row["price"])
+        is_special = True
+    else:
+        # Priority 3: DAY-OF-WEEK PRICE from pricing_rules
+        rule = conn.execute("SELECT price, category FROM pricing_rules WHERE day_of_week = ?", (day_name_en,)).fetchone()
+        if rule and rule["price"] is not None:
+            price = int(rule["price"])
+        else:
+            # Fallback
+            if day_name_en == "Saturday":
+                price = 3850000
+            elif day_name_en == "Friday":
+                price = 2200000
+            else:
+                price = 1800000
+        is_special = False
+
+    if close_conn:
+        conn.close()
+
+    return price, is_special, day_name_id, day_name_en
+
+def calculate_booking_price(check_in_str, check_out_str):
+    start = datetime.datetime.strptime(check_in_str, "%Y-%m-%d").date()
+    end = datetime.datetime.strptime(check_out_str, "%Y-%m-%d").date()
+
+    conn = get_db_connection()
+    breakdown = []
+    total_price = 0
+    curr = start
+
+    while curr < end:
+        date_str = curr.strftime("%Y-%m-%d")
+        price, is_special, day_id, day_en = get_night_price(curr, conn)
+        
+        row = conn.execute("SELECT status FROM calendar WHERE date = ?", (date_str,)).fetchone()
+        status = row["status"] if row else "ready"
+
+        breakdown.append({
+            "date": date_str,
+            "day_name": day_id,
+            "day_name_en": day_en,
+            "price": price,
+            "is_special": is_special,
+            "status": status
+        })
+        total_price += price
+        curr += datetime.timedelta(days=1)
+
+    conn.close()
+    return {
+        "check_in": check_in_str,
+        "check_out": check_out_str,
+        "nights": len(breakdown),
+        "breakdown": breakdown,
+        "total_price": total_price
+    }
 
 def get_released_months():
     settings = get_settings()
@@ -219,14 +464,9 @@ def toggle_release_month(year, month, release=True):
 
 def get_month_calendar(year, month, for_public=False):
     conn = get_db_connection()
-    settings = get_settings()
-    default_weekday = int(settings.get("weekday_price", 1500000))
-    default_middle = int(settings.get("middle_price", 1800000))
-    default_weekend = int(settings.get("weekend_price", 2200000))
 
     prefix = f"{year:04d}-{month:02d}-%"
     rows = conn.execute("SELECT date, status, price, note FROM calendar WHERE date LIKE ?", (prefix,)).fetchall()
-    conn.close()
 
     db_map = {row["date"]: dict(row) for row in rows}
 
@@ -247,14 +487,7 @@ def get_month_calendar(year, month, for_public=False):
         if date_str in db_map:
             item = dict(db_map[date_str])
         else:
-            w = curr.weekday() # 0-4=Mon-Fri, 5=Sat, 6=Sun
-            if w == 5:
-                default_price = default_weekend
-            elif w == 4:
-                default_price = default_middle
-            else:
-                default_price = default_weekday
-
+            default_price, is_special, _, _ = get_night_price(curr, conn)
             item = {
                 "date": date_str,
                 "status": "ready",
@@ -271,6 +504,8 @@ def get_month_calendar(year, month, for_public=False):
         result[date_str] = item
         curr += datetime.timedelta(days=1)
 
+    conn.close()
+
     return {
         "dates": result,
         "is_released": is_released
@@ -281,18 +516,13 @@ def batch_update_dates(start_date, end_date, status=None, price=None, note=None)
     end = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
     
     conn = get_db_connection()
-    settings = get_settings()
-    default_weekday = int(settings.get("weekday_price", 1500000))
-    default_middle = int(settings.get("middle_price", 1800000))
-    default_weekend = int(settings.get("weekend_price", 2200000))
 
     curr = start
     while curr <= end:
         date_str = curr.strftime("%Y-%m-%d")
         existing = conn.execute("SELECT status, price, note FROM calendar WHERE date = ?", (date_str,)).fetchone()
         
-        w = curr.weekday()
-        day_default_price = default_weekend if w == 5 else (default_middle if w == 4 else default_weekday)
+        day_default_price, _, _, _ = get_night_price(curr, conn)
 
         new_status = status if status else (existing["status"] if existing else "ready")
         new_price = price if price is not None else (existing["price"] if existing else day_default_price)

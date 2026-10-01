@@ -230,6 +230,30 @@ def handle_gallery():
         conn.close()
         return jsonify({"status": "success", "message": "Foto galeri dihapus"})
 
+@app.route('/api/calculate_price', methods=['GET', 'POST'])
+def calculate_price():
+    if request.method == 'POST':
+        data = request.json or {}
+        check_in = data.get('check_in')
+        check_out = data.get('check_out')
+    else:
+        check_in = request.args.get('check_in')
+        check_out = request.args.get('check_out')
+
+    if not check_in or not check_out:
+        return jsonify({"status": "error", "message": "Check-in dan Check-out wajib diisi"}), 400
+
+    try:
+        res = db.calculate_booking_price(check_in, check_out)
+        return jsonify({"status": "success", **res})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/pricing_rules', methods=['GET'])
+def get_pricing_rules():
+    rules = db.get_pricing_rules()
+    return jsonify({"status": "success", "pricing_rules": rules})
+
 @app.route('/api/bookings', methods=['GET', 'POST', 'DELETE'])
 def handle_bookings():
     conn = db.get_db_connection()
@@ -278,18 +302,13 @@ def handle_bookings():
             conn.close()
             return jsonify({"status": "error", "message": "Tanggal Check-out harus setelah Check-in"}), 400
 
-        total_price = 0
-        curr = start
-        while curr < end:
-            date_str = curr.strftime("%Y-%m-%d")
-            row = conn.execute("SELECT status, price FROM calendar WHERE date=?", (date_str,)).fetchone()
-            if row and row['status'] == 'booked':
+        calc_res = db.calculate_booking_price(check_in, check_out)
+        for night_item in calc_res['breakdown']:
+            if night_item['status'] == 'booked':
                 conn.close()
-                return jsonify({"status": "error", "message": f"Maaf, tanggal {date_str} sudah terbooking!"}), 400
-            
-            p = row['price'] if row else (2200000 if curr.weekday() in (4,5,6) else 1500000)
-            total_price += p
-            curr += datetime.timedelta(days=1)
+                return jsonify({"status": "error", "message": f"Maaf, tanggal {night_item['date']} ({night_item['day_name']}) sudah terbooking!"}), 400
+        
+        total_price = calc_res['total_price']
 
         cursor = conn.cursor()
         cursor.execute('''
@@ -306,6 +325,7 @@ def handle_bookings():
             "status": "success",
             "booking_id": booking_id,
             "total_price": total_price,
+            "breakdown": calc_res['breakdown'],
             "message": "Pemesanan berhasil dibuat!"
         })
 

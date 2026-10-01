@@ -13,12 +13,32 @@ def recreate_database():
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
 
+    # 0. Pricing Rules Table
+    cursor.execute('''
+        CREATE TABLE pricing_rules (
+            day_of_week TEXT PRIMARY KEY,
+            category TEXT NOT NULL,
+            price NUMERIC NOT NULL
+        )
+    ''')
+
+    default_pricing_rules = [
+        ("Sunday", "WEEKDAY", 1800000),
+        ("Monday", "WEEKDAY", 1800000),
+        ("Tuesday", "WEEKDAY", 1800000),
+        ("Wednesday", "WEEKDAY", 1800000),
+        ("Thursday", "WEEKDAY", 1800000),
+        ("Friday", "MIDDLE", 2200000),
+        ("Saturday", "WEEKEND", 3850000)
+    ]
+    cursor.executemany("INSERT INTO pricing_rules (day_of_week, category, price) VALUES (?, ?, ?)", default_pricing_rules)
+
     # 1. Calendar Table
     cursor.execute('''
         CREATE TABLE calendar (
             date TEXT PRIMARY KEY,
             status TEXT DEFAULT 'ready',
-            price INTEGER DEFAULT 1500000,
+            price INTEGER DEFAULT 1800000,
             note TEXT DEFAULT ''
         )
     ''')
@@ -100,9 +120,9 @@ def recreate_database():
         "tagline": "Mountain View Villa - Hunian Mewah & Asri untuk Liburan Keluarga Terbaik",
         "description": "Villa Babeh menawarkan pengalaman menginap istimewa dengan fasilitas lengkap, kolam renang pribadi, pemandangan gunung & alam indah, dan suasana yang tenang & sejuk.",
         "whatsapp": "6281295398434",
-        "weekday_price": "1500000",
-        "middle_price": "1800000",
-        "weekend_price": "2200000",
+        "weekday_price": "1800000",
+        "middle_price": "2200000",
+        "weekend_price": "3850000",
         "address": "Jl. Raya Puncak No. 88, Bogor, Jawa Barat",
         "admin_pin": "1234",
         "hero_image": "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1600&q=80",

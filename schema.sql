@@ -1,10 +1,17 @@
 -- Schema Database Villa Babeh untuk Supabase / PostgreSQL
 
+-- 0. Table Pricing Rules
+CREATE TABLE IF NOT EXISTS pricing_rules (
+    day_of_week VARCHAR(10) PRIMARY KEY,
+    category VARCHAR(20) NOT NULL,
+    price NUMERIC(12, 2) NOT NULL
+);
+
 -- 1. Table Calendar
 CREATE TABLE IF NOT EXISTS calendar (
     date VARCHAR(10) PRIMARY KEY,
     status VARCHAR(20) DEFAULT 'ready',
-    price INTEGER DEFAULT 1500000,
+    price INTEGER DEFAULT 1800000,
     note TEXT DEFAULT ''
 );
 
@@ -66,14 +73,26 @@ CREATE TABLE IF NOT EXISTS expenses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Data Awal Pricing Rules
+INSERT INTO pricing_rules (day_of_week, category, price) VALUES
+('Sunday', 'WEEKDAY', 1800000),
+('Monday', 'WEEKDAY', 1800000),
+('Tuesday', 'WEEKDAY', 1800000),
+('Wednesday', 'WEEKDAY', 1800000),
+('Thursday', 'WEEKDAY', 1800000),
+('Friday', 'MIDDLE', 2200000),
+('Saturday', 'WEEKEND', 3850000)
+ON CONFLICT (day_of_week) DO NOTHING;
+
 -- Data Awal (Default Settings)
 INSERT INTO settings (key, value) VALUES
 ('villa_name', 'Villa Babeh'),
 ('tagline', 'Mountain View Villa - Hunian Mewah & Asri untuk Liburan Keluarga Terbaik'),
 ('description', 'Villa Babeh menawarkan pengalaman menginap istimewa dengan fasilitas lengkap, kolam renang pribadi, pemandangan gunung & alam indah, dan suasana yang tenang & sejuk.'),
 ('whatsapp', '6281234567890'),
-('weekday_price', '1500000'),
-('weekend_price', '2200000'),
+('weekday_price', '1800000'),
+('middle_price', '2200000'),
+('weekend_price', '3850000'),
 ('address', 'Jl. Raya Puncak No. 88, Bogor, Jawa Barat'),
 ('admin_pin', '1234'),
 ('hero_image', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1600&q=80'),

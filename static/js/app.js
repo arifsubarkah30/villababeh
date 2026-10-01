@@ -96,13 +96,13 @@ function renderSettingsToUI() {
     if (address) address.innerText = appSettings.address || "";
 
     const weekdayPrice = document.getElementById("infoWeekdayPrice");
-    if (weekdayPrice) weekdayPrice.innerText = formatRupiah(appSettings.weekday_price || 1500000);
+    if (weekdayPrice) weekdayPrice.innerText = formatRupiah(appSettings.weekday_price || 1800000);
 
     const middlePrice = document.getElementById("infoMiddlePrice");
-    if (middlePrice) middlePrice.innerText = formatRupiah(appSettings.middle_price || 1800000);
+    if (middlePrice) middlePrice.innerText = formatRupiah(appSettings.middle_price || 2200000);
 
     const weekendPrice = document.getElementById("infoWeekendPrice");
-    if (weekendPrice) weekendPrice.innerText = formatRupiah(appSettings.weekend_price || 2200000);
+    if (weekendPrice) weekendPrice.innerText = formatRupiah(appSettings.weekend_price || 3850000);
 
     // Hero background image
     const heroBg = document.getElementById("heroBgImg");
@@ -745,6 +745,63 @@ function handleCellClick(dateStr, item) {
     renderCalendarGrid(currentYear, currentMonth);
 }
 
+function getNightBreakdown(startStr, endStr) {
+    const dayNamesId = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+    const monthShortNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
+
+    let s = new Date(startStr);
+    let e = new Date(endStr);
+    let curr = new Date(s);
+
+    let breakdown = [];
+    let totalPrice = 0;
+
+    while (curr < e) {
+        const year = curr.getFullYear();
+        const month = String(curr.getMonth() + 1).padStart(2, "0");
+        const dayNum = String(curr.getDate()).padStart(2, "0");
+        const ds = `${year}-${month}-${dayNum}`;
+
+        const day = curr.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+        const dayName = dayNamesId[day];
+        const shortDate = `${curr.getDate()} ${monthShortNames[curr.getMonth()]}`;
+
+        let price = 0;
+        let isSpecial = false;
+
+        const defaultWeekday = parseInt(appSettings.weekday_price || 1800000);
+        const defaultMiddle = parseInt(appSettings.middle_price || 2200000);
+        const defaultWeekend = parseInt(appSettings.weekend_price || 3850000);
+        const stdPrice = day === 6 ? defaultWeekend : (day === 5 ? defaultMiddle : defaultWeekday);
+
+        if (calendarDates[ds] && calendarDates[ds].price) {
+            price = calendarDates[ds].price;
+            if (price !== stdPrice) {
+                isSpecial = true;
+            }
+        } else {
+            price = stdPrice;
+        }
+
+        breakdown.push({
+            date: ds,
+            dayName: dayName,
+            shortDate: shortDate,
+            price: price,
+            isSpecial: isSpecial
+        });
+
+        totalPrice += price;
+        curr.setDate(curr.getDate() + 1);
+    }
+
+    return {
+        breakdown: breakdown,
+        totalPrice: totalPrice,
+        nights: breakdown.length
+    };
+}
+
 function updateSelectionUI() {
     const summary = document.getElementById("selectionSummary");
     const btn = document.getElementById("btnSubmitBooking");
@@ -778,17 +835,40 @@ function updateSelectionUI() {
         return;
     }
 
-    const nights = calculateNights(checkInDate, checkOutDate);
+    const { breakdown, totalPrice, nights } = getNightBreakdown(checkInDate, checkOutDate);
 
-    summary.className = "bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-2 text-xs animate-fade-in";
+    const breakdownHtml = breakdown.map(item => `
+        <div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0">
+            <span class="font-medium text-gray-700">
+                ${item.dayName} <span class="text-[10px] text-gray-500">(${item.shortDate})</span>
+                ${item.isSpecial ? '<span class="text-[9px] bg-amber-100 text-amber-800 px-1 rounded font-bold ml-1">⭐ Harga Khusus</span>' : ''}
+            </span>
+            <span class="font-bold text-gray-900">${formatRupiah(item.price)}</span>
+        </div>
+    `).join("");
+
+    summary.className = "bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-3 text-xs animate-fade-in";
     summary.innerHTML = `
         <div class="flex justify-between items-center text-xs font-bold text-indigo-900 uppercase">
             <span>📅 Rencana Tanggal Menginap</span>
-            <span class="bg-indigo-600 text-white px-2 py-0.5 rounded-full text-[10px]">${nights} Malam</span>
+            <span class="bg-indigo-600 text-white px-2.5 py-0.5 rounded-full text-[11px] font-bold">${nights} Malam</span>
         </div>
-        <div class="text-xs space-y-1 text-gray-800 pt-1">
+        <div class="text-xs space-y-1 text-gray-800 border-b border-indigo-100 pb-2">
             <div>Check-In: <strong class="text-indigo-950">${formatDateIndo(checkInDate)}</strong> (14:00 WIB)</div>
             <div>Check-Out: <strong class="text-indigo-950">${formatDateIndo(checkOutDate)}</strong> (12:00 WIB)</div>
+        </div>
+        <div>
+            <div class="font-bold text-indigo-950 text-[11px] uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                <span>RINGKASAN HARGA</span>
+                <span class="text-[10px] text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded font-semibold">Night-Based Pricing</span>
+            </div>
+            <div class="space-y-0.5 bg-white/90 p-2.5 rounded-xl border border-indigo-100 max-h-44 overflow-y-auto shadow-inner">
+                ${breakdownHtml}
+            </div>
+            <div class="border-t border-indigo-200 mt-2.5 pt-2 flex justify-between items-center text-indigo-950 font-bold">
+                <span class="text-xs">Total (${nights} Malam)</span>
+                <span class="text-emerald-700 text-base font-extrabold">${formatRupiah(totalPrice)}</span>
+            </div>
         </div>
     `;
 
@@ -810,27 +890,7 @@ function calculateNights(startStr, endStr) {
 }
 
 function calculateTotalPriceRange(startStr, endStr) {
-    let total = 0;
-    let curr = new Date(startStr);
-    const end = new Date(endStr);
-
-    while (curr < end) {
-        const ds = curr.toISOString().split("T")[0];
-        if (calendarDates[ds]) {
-            total += calendarDates[ds].price;
-        } else {
-            const day = curr.getDay(); // 0=Sun, 5=Fri, 6=Sat
-            if (day === 6) {
-                total += parseInt(appSettings.weekend_price || 2200000);
-            } else if (day === 5) {
-                total += parseInt(appSettings.middle_price || 1800000);
-            } else {
-                total += parseInt(appSettings.weekday_price || 1500000);
-            }
-        }
-        curr.setDate(curr.getDate() + 1);
-    }
-    return total;
+    return getNightBreakdown(startStr, endStr).totalPrice;
 }
 
 // -------------------------------------------------------------
@@ -850,9 +910,9 @@ async function submitBooking(event) {
     const guestIgElem = document.getElementById("guestIg");
     const guestIg = guestIgElem && guestIgElem.value ? guestIgElem.value : "-";
 
-    const nights = calculateNights(checkInDate, checkOutDate);
-    const totalPrice = calculateTotalPriceRange(checkInDate, checkOutDate);
+    const { breakdown, totalPrice, nights } = getNightBreakdown(checkInDate, checkOutDate);
     const datesText = `${formatDateIndo(checkInDate)} s/d ${formatDateIndo(checkOutDate)} (${nights} Malam)`;
+    const breakdownText = breakdown.map(b => `- ${b.dayName} (${b.shortDate}): ${formatRupiah(b.price)}`).join("\n");
 
     try {
         await fetch("/api/bookings", {
@@ -869,14 +929,18 @@ async function submitBooking(event) {
         });
     } catch (e) {}
 
-    // Exact Format Pemesanan requested by user
-    const message = `Format pemesanan 
+    const message = `Format Pemesanan Villa Babeh
 
 Nama pemesan : ${guestName}
 Hp : ${guestPhone}
 Tgl menginap : ${datesText}
 Total tamu : ${totalGuests}
-Nama instagram : ${guestIg}`;
+Nama instagram : ${guestIg}
+
+Rincian Harga Per Malam:
+${breakdownText}
+
+Total Biaya: ${formatRupiah(totalPrice)}`;
 
     const waNumber = appSettings.whatsapp || "6281234567890";
     const encodedMessage = encodeURIComponent(message);
