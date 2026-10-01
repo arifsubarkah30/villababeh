@@ -1365,12 +1365,14 @@ function renderAdminGalleryList() {
         return;
     }
 
-    container.innerHTML = galleryData.map(g => `
+    container.innerHTML = galleryData.map(g => {
+        const imgUrl = g.image_url || g.public_url || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80';
+        return `
         <div class="bg-gray-50 rounded-2xl overflow-hidden border border-gray-200 p-2 space-y-2">
-            <img src="${g.image_url}" class="w-full h-24 object-cover rounded-xl">
+            <img src="${imgUrl}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80';" class="w-full h-24 object-cover rounded-xl">
             <div class="text-xs font-bold truncate">${g.title}</div>
             <div class="flex space-x-1">
-                <button onclick="handleGalleryPhotoClick('${g.id}', '${g.image_url}', '${g.title}')" class="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold py-1 rounded text-[10px]">
+                <button onclick="handleGalleryPhotoClick('${g.id}', '${imgUrl}', '${g.title}')" class="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold py-1 rounded text-[10px]">
                     Ubah Foto
                 </button>
                 <button onclick="deleteGalleryPhoto('${g.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2 py-1 rounded text-[10px]">
@@ -1378,7 +1380,8 @@ function renderAdminGalleryList() {
                 </button>
             </div>
         </div>
-    `).join("");
+    `;
+    }).join("");
 }
 
 function openAddNewGalleryModal() {
