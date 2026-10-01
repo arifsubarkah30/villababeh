@@ -46,6 +46,32 @@ def admin_page():
     settings = db.get_settings()
     return render_template('admin.html', settings=settings)
 
+@app.route('/api/db_status')
+def db_status():
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        return jsonify({
+            "status": "warning",
+            "db_type": "SQLite (Lokal)",
+            "message": "DATABASE_URL belum dipasang di environment Vercel/lokal."
+        })
+    try:
+        conn = db.get_db_connection()
+        res = conn.execute("SELECT current_database(), current_user").fetchone()
+        conn.close()
+        return jsonify({
+            "status": "success",
+            "db_type": "Supabase PostgreSQL",
+            "connected_database": res["current_database"] if res else "postgres",
+            "user": res["current_user"] if res else "postgres"
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "db_type": "Supabase PostgreSQL (Koneksi Gagal)",
+            "error_details": str(e)
+        }), 500
+
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
