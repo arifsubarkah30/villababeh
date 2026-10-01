@@ -166,7 +166,7 @@ function renderFacilitiesUI() {
         const imgUrl = f.image_url || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80';
         return `
             <div class="bg-gray-50 border border-gray-100 rounded-3xl overflow-hidden hover:shadow-xl hover:border-emerald-200 transition duration-300 flex flex-col group p-3 space-y-3">
-                <div class="relative aspect-square w-full bg-gray-200 rounded-2xl overflow-hidden facility-card-img-container cursor-pointer shadow-sm" onclick="handleFacilityPhotoClick(${f.id}, '${imgUrl}')">
+                <div class="relative aspect-square w-full bg-gray-200 rounded-2xl overflow-hidden facility-card-img-container cursor-pointer shadow-sm" onclick="handleFacilityPhotoClick('${f.id}', '${imgUrl}')">
                     <img src="${imgUrl}" alt="${f.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                     <div class="absolute top-2.5 left-2.5 bg-white/90 backdrop-blur-sm text-villa-900 px-2.5 py-1 rounded-full text-[11px] font-bold shadow flex items-center space-x-1">
                         <i data-lucide="${iconName}" class="w-3.5 h-3.5 inline"></i>
@@ -217,7 +217,7 @@ function renderGalleryUI() {
 
     container.innerHTML = galleryData.map(g => {
         return `
-            <div class="group relative overflow-hidden rounded-3xl shadow-md bg-gray-100 aspect-video gallery-card-img-container cursor-pointer" onclick="handleGalleryPhotoClick(${g.id}, '${g.image_url}', '${g.title}')">
+            <div class="group relative overflow-hidden rounded-3xl shadow-md bg-gray-100 aspect-video gallery-card-img-container cursor-pointer" onclick="handleGalleryPhotoClick('${g.id}', '${g.image_url}', '${g.title}')">
                 <img src="${g.image_url}" alt="${g.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-4">
                     <span class="text-white font-bold text-sm truncate">${g.title}</span>
@@ -400,7 +400,7 @@ async function savePhotoEdit() {
 
     try {
         if (photoEditTarget.type === "facility") {
-            const fac = facilitiesData.find(f => f.id === photoEditTarget.id);
+            const fac = facilitiesData.find(f => String(f.id) === String(photoEditTarget.id));
             if (fac) {
                 const res = await fetch("/api/facilities", {
                     method: "POST",
@@ -1369,10 +1369,10 @@ function renderAdminGalleryList() {
             <img src="${g.image_url}" class="w-full h-24 object-cover rounded-xl">
             <div class="text-xs font-bold truncate">${g.title}</div>
             <div class="flex space-x-1">
-                <button onclick="handleGalleryPhotoClick(${g.id}, '${g.image_url}', '${g.title}')" class="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold py-1 rounded text-[10px]">
+                <button onclick="handleGalleryPhotoClick('${g.id}', '${g.image_url}', '${g.title}')" class="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold py-1 rounded text-[10px]">
                     Ubah Foto
                 </button>
-                <button onclick="deleteGalleryPhoto(${g.id})" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2 py-1 rounded text-[10px]">
+                <button onclick="deleteGalleryPhoto('${g.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2 py-1 rounded text-[10px]">
                     Hapus
                 </button>
             </div>
@@ -1944,10 +1944,10 @@ function renderAdminFacilities() {
                 </div>
             </div>
             <div class="flex items-center space-x-2">
-                <button onclick="handleFacilityPhotoClick(${f.id}, '${f.image_url || ''}')" class="bg-amber-100 text-amber-900 hover:bg-amber-200 text-xs px-2.5 py-1 rounded font-bold">
+                <button onclick="handleFacilityPhotoClick('${f.id}', '${f.image_url || ''}')" class="bg-amber-100 text-amber-900 hover:bg-amber-200 text-xs px-2.5 py-1 rounded font-bold">
                     📷 Ubah Foto
                 </button>
-                <button onclick="deleteFacility(${f.id})" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs px-2.5 py-1 rounded font-bold">
+                <button onclick="deleteFacility('${f.id}')" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs px-2.5 py-1 rounded font-bold">
                     Hapus
                 </button>
             </div>
