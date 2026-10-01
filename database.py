@@ -114,37 +114,16 @@ def get_db_connection():
     db_url = os.environ.get("DATABASE_URL")
     if db_url:
         import psycopg2
-        
-        urls_to_try = []
-        url_std = db_url.replace("postgres://", "postgresql://", 1)
-        if "sslmode" not in url_std:
-            sep = "&" if "?" in url_std else "?"
-            url_std += f"{sep}sslmode=require"
-        urls_to_try.append(url_std)
-        
-        # Auto-construct Supabase Pooler fallback if direct db.REF.supabase.co fails (IPv6/ISP issues)
-        if "db." in db_url and ".supabase.co" in db_url:
-            try:
-                proj_ref = db_url.split("db.")[1].split(".supabase.co")[0]
-                pooler_url = url_std
-                pooler_url = pooler_url.replace(f"db.{proj_ref}.supabase.co:5432", f"aws-0-ap-southeast-1.pooler.supabase.com:6543")
-                pooler_url = pooler_url.replace(f"db.{proj_ref}.supabase.co", "aws-0-ap-southeast-1.pooler.supabase.com:6543")
-                if f"postgres.{proj_ref}" not in pooler_url and "://postgres:" in pooler_url:
-                    pooler_url = pooler_url.replace("://postgres:", f"://postgres.{proj_ref}:")
-                urls_to_try.append(pooler_url)
-            except Exception:
-                pass
-
-        last_err = None
-        for u in urls_to_try:
-            try:
-                conn = psycopg2.connect(u)
-                return PgConnWrapper(conn)
-            except Exception as e:
-                last_err = e
-
-        print(f"CRITICAL: Supabase PG connection failed: {last_err}")
-        raise RuntimeError(f"Gagal terhubung ke Supabase Database: {last_err}")
+        url_to_use = db_url.replace("postgres://", "postgresql://", 1)
+        if "sslmode" not in url_to_use:
+            separator = "&" if "?" in url_to_use else "?"
+            url_to_use += f"{separator}sslmode=require"
+        try:
+            conn = psycopg2.connect(url_to_use)
+            return PgConnWrapper(conn)
+        except Exception as err:
+            print(f"CRITICAL: Supabase PG connection failed: {err}")
+            raise RuntimeError(f"Gagal terhubung ke Supabase Database: {err}")
     
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
