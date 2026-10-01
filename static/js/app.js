@@ -163,11 +163,12 @@ function renderFacilitiesUI() {
 
     container.innerHTML = facilitiesData.map(f => {
         const iconName = f.icon || 'star';
-        const imgUrl = f.image_url || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80';
+        const imgUrl = f.image_url || f.public_url || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80';
+        const fallbackUrl = 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80';
         return `
             <div class="bg-gray-50 border border-gray-100 rounded-3xl overflow-hidden hover:shadow-xl hover:border-emerald-200 transition duration-300 flex flex-col group p-3 space-y-3">
                 <div class="relative aspect-square w-full bg-gray-200 rounded-2xl overflow-hidden facility-card-img-container cursor-pointer shadow-sm" onclick="handleFacilityPhotoClick('${f.id}', '${imgUrl}')">
-                    <img src="${imgUrl}" alt="${f.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                    <img src="${imgUrl}" alt="${f.name}" onerror="this.onerror=null; this.src='${fallbackUrl}';" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                     <div class="absolute top-2.5 left-2.5 bg-white/90 backdrop-blur-sm text-villa-900 px-2.5 py-1 rounded-full text-[11px] font-bold shadow flex items-center space-x-1">
                         <i data-lucide="${iconName}" class="w-3.5 h-3.5 inline"></i>
                         <span>${f.category || 'Fasilitas'}</span>
