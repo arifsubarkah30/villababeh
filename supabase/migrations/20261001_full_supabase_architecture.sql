@@ -1,7 +1,6 @@
 -- =====================================================================
--- VILLA BABEH — FULL SUPABASE DATA ARCHITECTURE (MIGRATION SCRIPT)
+-- VILLA BABEH — FULL SUPABASE DATA ARCHITECTURE (SAFE & IDEMPOTENT)
 -- Single Source of Truth: Supabase PostgreSQL, Auth, Storage, RLS
--- Safe for existing tables (Idempotent)
 -- =====================================================================
 
 -- Enable UUID extension
@@ -76,27 +75,30 @@ CREATE TABLE IF NOT EXISTS facilities (
     icon TEXT DEFAULT 'star',
     category TEXT DEFAULT 'Umum',
     image_url TEXT DEFAULT '',
+    public_url TEXT DEFAULT '',
     sort_order INTEGER DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Ensure columns exist in facilities if table already existed
+-- Ensure columns exist and relax NOT NULL constraints if table pre-existed
 ALTER TABLE facilities ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE facilities ADD COLUMN IF NOT EXISTS icon TEXT DEFAULT 'star';
 ALTER TABLE facilities ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Umum';
 ALTER TABLE facilities ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';
+ALTER TABLE facilities ADD COLUMN IF NOT EXISTS public_url TEXT DEFAULT '';
 ALTER TABLE facilities ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
 ALTER TABLE facilities ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE facilities ALTER COLUMN image_url DROP NOT NULL;
 
 -- Initial seed for facilities
-INSERT INTO facilities (name, description, icon, category, image_url, sort_order) VALUES
-('Private Pool', 'Kolam renang bersih dengan kedalaman anak & dewasa + sunbed santai', 'swimming-pool', 'Utama', 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80', 1),
-('Playground', 'Area bermain anak aman dan menyenangkan', 'smile', 'Outdoor', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80', 2),
-('Biliar', 'Meja biliar standar profesional untuk bersantai', 'gamepad-2', 'Hiburan', 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80', 3),
-('Rooftop', 'Area santai rooftop view pegunungan indah', 'sun', 'Outdoor', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80', 4),
-('Lahan Parkir Luas', 'Area parkir aman dalam benteng pagar villa muat hingga 5 mobil', 'car', 'Keamanan', 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80', 5)
+INSERT INTO facilities (name, description, icon, category, image_url, public_url, sort_order) VALUES
+('Private Pool', 'Kolam renang bersih dengan kedalaman anak & dewasa + sunbed santai', 'swimming-pool', 'Utama', 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80', 1),
+('Playground', 'Area bermain anak aman dan menyenangkan', 'smile', 'Outdoor', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80', 2),
+('Biliar', 'Meja biliar standar profesional untuk bersantai', 'gamepad-2', 'Hiburan', 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80', 3),
+('Rooftop', 'Area santai rooftop view pegunungan indah', 'sun', 'Outdoor', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80', 4),
+('Lahan Parkir Luas', 'Area parkir aman dalam benteng pagar villa muat hingga 5 mobil', 'car', 'Keamanan', 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80', 5)
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------
@@ -105,7 +107,8 @@ ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS gallery (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     storage_path TEXT,
-    public_url TEXT NOT NULL,
+    public_url TEXT DEFAULT '',
+    image_url TEXT DEFAULT '',
     title TEXT NOT NULL,
     description TEXT,
     category TEXT DEFAULT 'Umum',
@@ -115,19 +118,24 @@ CREATE TABLE IF NOT EXISTS gallery (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Ensure columns exist in gallery if table already existed
+-- Ensure columns exist and relax NOT NULL constraints if table pre-existed
 ALTER TABLE gallery ADD COLUMN IF NOT EXISTS storage_path TEXT;
-ALTER TABLE gallery ADD COLUMN IF NOT EXISTS public_url TEXT;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS public_url TEXT DEFAULT '';
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';
 ALTER TABLE gallery ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Umum';
 ALTER TABLE gallery ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
 ALTER TABLE gallery ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE;
 
+-- Crucial: Drop NOT NULL constraint on image_url and public_url if present from old schema
+ALTER TABLE gallery ALTER COLUMN image_url DROP NOT NULL;
+ALTER TABLE gallery ALTER COLUMN public_url DROP NOT NULL;
+
 -- Initial seed for gallery
-INSERT INTO gallery (title, public_url, category, sort_order) VALUES
-('Tampak Depan & Halaman', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80', 'Outdoor', 1),
-('Private Swimming Pool', 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80', 'Kolam', 2),
-('Ruang Keluarga & TV', 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80', 'Interior', 3),
-('Kamar Utama AC', 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80', 'Kamar', 4)
+INSERT INTO gallery (title, public_url, image_url, category, sort_order) VALUES
+('Tampak Depan & Halaman', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80', 'Outdoor', 1),
+('Private Swimming Pool', 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80', 'Kolam', 2),
+('Ruang Keluarga & TV', 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80', 'Interior', 3),
+('Kamar Utama AC', 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80', 'Kamar', 4)
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------
