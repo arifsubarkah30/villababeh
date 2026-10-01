@@ -1,5 +1,5 @@
 -- =====================================================================
--- VILLA BABEH — FULL SUPABASE DATA ARCHITECTURE (SAFE & IDEMPOTENT)
+-- VILLA BABEH — FULL SUPABASE DATA ARCHITECTURE (CLEAN RE-CREATION)
 -- Single Source of Truth: Supabase PostgreSQL, Auth, Storage, RLS
 -- =====================================================================
 
@@ -7,9 +7,24 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ---------------------------------------------------------------------
+-- RESET OLD TABLES (Ensures clean creation without column conflicts)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS booking_status_history CASCADE;
+DROP TABLE IF EXISTS payments CASCADE;
+DROP TABLE IF EXISTS audit_logs CASCADE;
+DROP TABLE IF EXISTS bookings CASCADE;
+DROP TABLE IF EXISTS calendar_blocks CASCADE;
+DROP TABLE IF EXISTS special_prices CASCADE;
+DROP TABLE IF EXISTS pricing_rules CASCADE;
+DROP TABLE IF EXISTS gallery CASCADE;
+DROP TABLE IF EXISTS facilities CASCADE;
+DROP TABLE IF EXISTS villa_settings CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+
+-- ---------------------------------------------------------------------
 -- 1. PROFILES TABLE (Supabase Auth Integration)
 -- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS profiles (
+CREATE TABLE profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
     full_name TEXT,
@@ -21,7 +36,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 -- ---------------------------------------------------------------------
 -- 2. VILLA SETTINGS TABLE
 -- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS villa_settings (
+CREATE TABLE villa_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     villa_name TEXT NOT NULL DEFAULT 'Villa Babeh',
     description TEXT DEFAULT 'Villa Babeh menawarkan pengalaman menginap istimewa dengan fasilitas lengkap, kolam renang pribadi, pemandangan gunung & alam indah, dan suasana yang tenang & sejuk.',
@@ -48,27 +63,14 @@ CREATE TABLE IF NOT EXISTS villa_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Ensure columns exist in case table was created previously
-ALTER TABLE villa_settings ADD COLUMN IF NOT EXISTS hero_image_url TEXT DEFAULT 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1600&q=80';
-ALTER TABLE villa_settings ADD COLUMN IF NOT EXISTS villa_logo_url TEXT DEFAULT '/static/images/logo.jpg';
-ALTER TABLE villa_settings ADD COLUMN IF NOT EXISTS highlight_1_title TEXT DEFAULT '4 Kamar';
-ALTER TABLE villa_settings ADD COLUMN IF NOT EXISTS highlight_1_sub TEXT DEFAULT 'AC + Bed Super King';
-ALTER TABLE villa_settings ADD COLUMN IF NOT EXISTS highlight_2_title TEXT DEFAULT 'Private Pool';
-ALTER TABLE villa_settings ADD COLUMN IF NOT EXISTS highlight_2_sub TEXT DEFAULT 'Kolam Renang Bersih';
-ALTER TABLE villa_settings ADD COLUMN IF NOT EXISTS highlight_3_title TEXT DEFAULT '30 Orang';
-ALTER TABLE villa_settings ADD COLUMN IF NOT EXISTS highlight_3_sub TEXT DEFAULT 'Kapasitas Tamu';
-ALTER TABLE villa_settings ADD COLUMN IF NOT EXISTS highlight_4_title TEXT DEFAULT 'Smart TV';
-ALTER TABLE villa_settings ADD COLUMN IF NOT EXISTS highlight_4_sub TEXT DEFAULT 'Sound Karaoke & WiFi';
-
 -- Initial seed for villa_settings
 INSERT INTO villa_settings (villa_name, capacity, bedroom_count)
-SELECT 'Villa Babeh', 25, 4
-WHERE NOT EXISTS (SELECT 1 FROM villa_settings);
+VALUES ('Villa Babeh', 25, 4);
 
 -- ---------------------------------------------------------------------
 -- 3. FACILITIES TABLE
 -- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS facilities (
+CREATE TABLE facilities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     description TEXT,
@@ -82,29 +84,18 @@ CREATE TABLE IF NOT EXISTS facilities (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Ensure columns exist and relax NOT NULL constraints if table pre-existed
-ALTER TABLE facilities ADD COLUMN IF NOT EXISTS description TEXT;
-ALTER TABLE facilities ADD COLUMN IF NOT EXISTS icon TEXT DEFAULT 'star';
-ALTER TABLE facilities ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Umum';
-ALTER TABLE facilities ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';
-ALTER TABLE facilities ADD COLUMN IF NOT EXISTS public_url TEXT DEFAULT '';
-ALTER TABLE facilities ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
-ALTER TABLE facilities ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
-ALTER TABLE facilities ALTER COLUMN image_url DROP NOT NULL;
-
 -- Initial seed for facilities
 INSERT INTO facilities (name, description, icon, category, image_url, public_url, sort_order) VALUES
 ('Private Pool', 'Kolam renang bersih dengan kedalaman anak & dewasa + sunbed santai', 'swimming-pool', 'Utama', 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80', 1),
 ('Playground', 'Area bermain anak aman dan menyenangkan', 'smile', 'Outdoor', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80', 2),
 ('Biliar', 'Meja biliar standar profesional untuk bersantai', 'gamepad-2', 'Hiburan', 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80', 3),
 ('Rooftop', 'Area santai rooftop view pegunungan indah', 'sun', 'Outdoor', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80', 4),
-('Lahan Parkir Luas', 'Area parkir aman dalam benteng pagar villa muat hingga 5 mobil', 'car', 'Keamanan', 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80', 5)
-ON CONFLICT DO NOTHING;
+('Lahan Parkir Luas', 'Area parkir aman dalam benteng pagar villa muat hingga 5 mobil', 'car', 'Keamanan', 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80', 5);
 
 -- ---------------------------------------------------------------------
 -- 4. GALLERY TABLE (Metadata connected to Supabase Storage)
 -- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS gallery (
+CREATE TABLE gallery (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     storage_path TEXT,
     public_url TEXT DEFAULT '',
@@ -118,30 +109,17 @@ CREATE TABLE IF NOT EXISTS gallery (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Ensure columns exist and relax NOT NULL constraints if table pre-existed
-ALTER TABLE gallery ADD COLUMN IF NOT EXISTS storage_path TEXT;
-ALTER TABLE gallery ADD COLUMN IF NOT EXISTS public_url TEXT DEFAULT '';
-ALTER TABLE gallery ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';
-ALTER TABLE gallery ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Umum';
-ALTER TABLE gallery ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
-ALTER TABLE gallery ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE;
-
--- Crucial: Drop NOT NULL constraint on image_url and public_url if present from old schema
-ALTER TABLE gallery ALTER COLUMN image_url DROP NOT NULL;
-ALTER TABLE gallery ALTER COLUMN public_url DROP NOT NULL;
-
 -- Initial seed for gallery
 INSERT INTO gallery (title, public_url, image_url, category, sort_order) VALUES
 ('Tampak Depan & Halaman', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80', 'Outdoor', 1),
 ('Private Swimming Pool', 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80', 'Kolam', 2),
 ('Ruang Keluarga & TV', 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=800&q=80', 'Interior', 3),
-('Kamar Utama AC', 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80', 'Kamar', 4)
-ON CONFLICT DO NOTHING;
+('Kamar Utama AC', 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80', 'Kamar', 4);
 
 -- ---------------------------------------------------------------------
 -- 5. PRICING RULES TABLE (Standard Day-of-Week Rules)
 -- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS pricing_rules (
+CREATE TABLE pricing_rules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     category TEXT NOT NULL CHECK (category IN ('WEEKDAY', 'MIDDLE', 'WEEKEND')),
     day_of_week TEXT NOT NULL UNIQUE CHECK (day_of_week IN ('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')),
@@ -159,13 +137,12 @@ INSERT INTO pricing_rules (category, day_of_week, price) VALUES
 ('WEEKDAY', 'Wednesday', 1800000),
 ('WEEKDAY', 'Thursday', 1800000),
 ('MIDDLE', 'Friday', 2200000),
-('WEEKEND', 'Saturday', 3850000)
-ON CONFLICT (day_of_week) DO NOTHING;
+('WEEKEND', 'Saturday', 3850000);
 
 -- ---------------------------------------------------------------------
 -- 6. SPECIAL PRICES TABLE (Specific Date Overrides)
 -- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS special_prices (
+CREATE TABLE special_prices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     date DATE NOT NULL UNIQUE,
     price NUMERIC(12, 2) NOT NULL,
@@ -178,7 +155,7 @@ CREATE TABLE IF NOT EXISTS special_prices (
 -- ---------------------------------------------------------------------
 -- 7. CALENDAR BLOCKS TABLE (Maintenance / Closed Periods)
 -- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS calendar_blocks (
+CREATE TABLE calendar_blocks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
@@ -191,7 +168,7 @@ CREATE TABLE IF NOT EXISTS calendar_blocks (
 -- ---------------------------------------------------------------------
 -- 8. BOOKINGS TABLE (Customer & Admin Booking Engine)
 -- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS bookings (
+CREATE TABLE bookings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     booking_code VARCHAR(50) UNIQUE NOT NULL,
     guest_name VARCHAR(100) NOT NULL,
@@ -208,18 +185,18 @@ CREATE TABLE IF NOT EXISTS bookings (
 );
 
 -- Indexes for fast query execution
-CREATE INDEX IF NOT EXISTS idx_bookings_code ON bookings(booking_code);
-CREATE INDEX IF NOT EXISTS idx_bookings_check_in ON bookings(check_in);
-CREATE INDEX IF NOT EXISTS idx_bookings_check_out ON bookings(check_out);
-CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
-CREATE INDEX IF NOT EXISTS idx_bookings_created_at ON bookings(created_at);
-CREATE INDEX IF NOT EXISTS idx_special_prices_date ON special_prices(date);
-CREATE INDEX IF NOT EXISTS idx_calendar_blocks_range ON calendar_blocks(start_date, end_date);
+CREATE INDEX idx_bookings_code ON bookings(booking_code);
+CREATE INDEX idx_bookings_check_in ON bookings(check_in);
+CREATE INDEX idx_bookings_check_out ON bookings(check_out);
+CREATE INDEX idx_bookings_status ON bookings(status);
+CREATE INDEX idx_bookings_created_at ON bookings(created_at);
+CREATE INDEX idx_special_prices_date ON special_prices(date);
+CREATE INDEX idx_calendar_blocks_range ON calendar_blocks(start_date, end_date);
 
 -- ---------------------------------------------------------------------
 -- 9. PAYMENTS TABLE
 -- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS payments (
+CREATE TABLE payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
     payment_name VARCHAR(100) NOT NULL,
@@ -232,7 +209,7 @@ CREATE TABLE IF NOT EXISTS payments (
 -- ---------------------------------------------------------------------
 -- 10. EXPENSES TABLE (Operational Expenses)
 -- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS expenses (
+CREATE TABLE expenses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(150) NOT NULL,
     category VARCHAR(50) DEFAULT 'Operasional',
@@ -245,7 +222,7 @@ CREATE TABLE IF NOT EXISTS expenses (
 -- ---------------------------------------------------------------------
 -- 11. BOOKING STATUS HISTORY TABLE
 -- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS booking_status_history (
+CREATE TABLE booking_status_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
     previous_status VARCHAR(20),
@@ -258,7 +235,7 @@ CREATE TABLE IF NOT EXISTS booking_status_history (
 -- ---------------------------------------------------------------------
 -- 12. AUDIT LOGS TABLE
 -- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS audit_logs (
+CREATE TABLE audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     action TEXT NOT NULL,
@@ -282,27 +259,6 @@ ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE booking_status_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
-
--- Drop existing policies if they exist to prevent duplicate errors
-DROP POLICY IF EXISTS "Public Read Villa Settings" ON villa_settings;
-DROP POLICY IF EXISTS "Public Read Active Facilities" ON facilities;
-DROP POLICY IF EXISTS "Public Read Gallery" ON gallery;
-DROP POLICY IF EXISTS "Public Read Pricing Rules" ON pricing_rules;
-DROP POLICY IF EXISTS "Public Read Special Prices" ON special_prices;
-DROP POLICY IF EXISTS "Public Read Calendar Blocks" ON calendar_blocks;
-DROP POLICY IF EXISTS "Public Read Bookings Availability" ON bookings;
-DROP POLICY IF EXISTS "Public Create Booking Request" ON bookings;
-DROP POLICY IF EXISTS "Admin All Villa Settings" ON villa_settings;
-DROP POLICY IF EXISTS "Admin All Facilities" ON facilities;
-DROP POLICY IF EXISTS "Admin All Gallery" ON gallery;
-DROP POLICY IF EXISTS "Admin All Pricing Rules" ON pricing_rules;
-DROP POLICY IF EXISTS "Admin All Special Prices" ON special_prices;
-DROP POLICY IF EXISTS "Admin All Calendar Blocks" ON calendar_blocks;
-DROP POLICY IF EXISTS "Admin All Bookings" ON bookings;
-DROP POLICY IF EXISTS "Admin All Payments" ON payments;
-DROP POLICY IF EXISTS "Admin All Expenses" ON expenses;
-DROP POLICY IF EXISTS "Admin All Status History" ON booking_status_history;
-DROP POLICY IF EXISTS "Admin All Audit Logs" ON audit_logs;
 
 -- Public Read Policies
 CREATE POLICY "Public Read Villa Settings" ON villa_settings FOR SELECT USING (true);
