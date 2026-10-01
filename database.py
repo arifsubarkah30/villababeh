@@ -681,9 +681,29 @@ def get_month_calendar(year, month, for_public=False):
     conn = get_db_connection()
 
     prefix = f"{year:04d}-{month:02d}-%"
-    rows = conn.execute("SELECT date, status, price, note FROM calendar WHERE date LIKE ?", (prefix,)).fetchall()
+    rows = []
+    try:
+        rows = conn.execute("SELECT date, status, price, note FROM calendar WHERE date LIKE ?", (prefix,)).fetchall()
+    except Exception:
+        try:
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS calendar (
+                    date TEXT PRIMARY KEY,
+                    status TEXT DEFAULT 'ready',
+                    price NUMERIC(12, 2),
+                    note TEXT
+                )
+            ''')
+            conn.commit()
+            rows = conn.execute("SELECT date, status, price, note FROM calendar WHERE date LIKE ?", (prefix,)).fetchall()
+        except Exception as e:
+            print(f"Calendar query warning: {e}")
 
-    db_map = {row["date"]: dict(row) for row in rows if row["date"]}
+    db_map = {}
+    if rows:
+        for row in rows:
+            if row and row["date"]:
+                db_map[str(row["date"])] = dict(row)
 
     first_day = datetime.date(year, month, 1)
     if month == 12:
@@ -731,10 +751,27 @@ def batch_update_dates(start_date, end_date, status=None, price=None, note=None)
     
     conn = get_db_connection()
 
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS calendar (
+                date TEXT PRIMARY KEY,
+                status TEXT DEFAULT 'ready',
+                price NUMERIC(12, 2),
+                note TEXT
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        pass
+
     curr = start
     while curr <= end:
         date_str = curr.strftime("%Y-%m-%d")
-        existing = conn.execute("SELECT status, price, note FROM calendar WHERE date = ?", (date_str,)).fetchone()
+        existing = None
+        try:
+            existing = conn.execute("SELECT status, price, note FROM calendar WHERE date = ?", (date_str,)).fetchone()
+        except Exception:
+            pass
         
         day_default_price, _, _, _ = get_night_price(curr, conn)
 
