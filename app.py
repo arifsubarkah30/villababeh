@@ -57,9 +57,30 @@ def upload_file():
     filename = secure_filename(file.filename)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_")
     filename = timestamp + filename
+
+    supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL")
+    supabase_key = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+
+    if supabase_url and supabase_key:
+        try:
+            from supabase import create_client
+            supabase_client = create_client(supabase_url, supabase_key)
+            file_bytes = file.read()
+            bucket_name = 'villa-gallery'
+            file_path = f"uploads/{filename}"
+            supabase_client.storage.from_(bucket_name).upload(
+                file_path,
+                file_bytes,
+                file_options={"content-type": file.content_type or "image/jpeg"}
+            )
+            public_url = supabase_client.storage.from_(bucket_name).get_public_url(file_path)
+            return jsonify({"status": "success", "image_url": public_url, "storage_path": file_path, "message": "Foto berhasil diunggah ke Supabase Storage!"})
+        except Exception as e:
+            print(f"Supabase Storage upload warning: {e}")
+            file.seek(0)
+
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
-
     image_url = f"/static/uploads/{filename}"
     return jsonify({"status": "success", "image_url": image_url, "message": "Foto/Logo berhasil diunggah!"})
 
@@ -118,20 +139,6 @@ def update_calendar():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/api/calendar/sync_holidays', methods=['POST'])
-def sync_holidays():
-    data = request.json or {}
-    year = int(data.get('year', datetime.date.today().year))
-    try:
-        count = db.sync_national_holidays(year)
-        return jsonify({
-            "status": "success",
-            "message": f"Berhasil menyingkronkan {count} Tanggal Merah / Hari Libur Nasional tahun {year}!"
-        })
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
 @app.route('/api/admin/verify_pin', methods=['POST'])
 def verify_admin_pin():
     data = request.json or {}
@@ -176,11 +183,11 @@ def handle_facilities():
 
         fac_id = data.get('id')
         if fac_id:
-            conn.execute("UPDATE facilities SET name=?, description=?, icon=?, category=?, image_url=? WHERE id=?",
-                         (name, description, icon, category, image_url, fac_id))
+            conn.execute("UPDATE facilities SET name=?, description=?, icon=?, category=?, image_url=?, public_url=? WHERE id=?",
+                         (name, description, icon, category, image_url, image_url, fac_id))
         else:
-            conn.execute("INSERT INTO facilities (name, description, icon, category, image_url) VALUES (?, ?, ?, ?, ?)",
-                         (name, description, icon, category, image_url))
+            conn.execute("INSERT INTO facilities (name, description, icon, category, image_url, public_url) VALUES (?, ?, ?, ?, ?, ?)",
+                         (name, description, icon, category, image_url, image_url))
         conn.commit()
         conn.close()
         return jsonify({"status": "success", "message": "Fasilitas berhasil disimpan"})
@@ -213,11 +220,11 @@ def handle_gallery():
             return jsonify({"status": "error", "message": "URL / Berkas Foto wajib diisi"}), 400
 
         if item_id:
-            conn.execute("UPDATE gallery SET title=?, image_url=?, category=? WHERE id=?",
-                         (title, image_url, category, item_id))
+            conn.execute("UPDATE gallery SET title=?, image_url=?, public_url=?, category=? WHERE id=?",
+                         (title, image_url, image_url, category, item_id))
         else:
-            conn.execute("INSERT INTO gallery (title, image_url, category) VALUES (?, ?, ?)",
-                         (title, image_url, category))
+            conn.execute("INSERT INTO gallery (title, image_url, public_url, category) VALUES (?, ?, ?, ?)",
+                         (title, image_url, image_url, category))
         conn.commit()
         conn.close()
         return jsonify({"status": "success", "message": "Foto galeri berhasil disimpan"})
@@ -262,18 +269,15 @@ def handle_bookings():
         result = []
         for b in bookings:
             b_dict = dict(b)
-            payments = conn.execute("SELECT * FROM payments WHERE booking_id=? ORDER BY id ASC", (b['id'],)).fetchall()
-            payments_list = [dict(p) for p in payments]
+            try:
+                payments = conn.execute("SELECT * FROM payments WHERE booking_id=? ORDER BY id ASC", (b['id'],)).fetchall()
+                payments_list = [dict(p) for p in payments]
+            except Exception:
+                payments_list = []
             total_paid = sum(p['amount'] for p in payments_list)
             remaining_balance = b_dict['total_price'] - total_paid
             
-            if remaining_balance <= 0 and total_paid > 0:
-                p_status = "LUNAS"
-            elif total_paid > 0:
-                p_status = "DP TERBAYAR"
-            else:
-                p_status = "BELUM BAYAR"
-
+            p_status = b_dict.get('status', 'PENDING')
             b_dict['payments'] = payments_list
             b_dict['total_paid'] = total_paid
             b_dict['remaining_balance'] = max(0, remaining_balance)
@@ -289,59 +293,55 @@ def handle_bookings():
         guest_phone = data.get('guest_phone')
         check_in = data.get('check_in')
         check_out = data.get('check_out')
+        guest_ig = data.get('guest_ig', '-')
+        total_guests = data.get('total_guests', '10 Orang')
         notes = data.get('notes', '')
 
         if not (guest_name and guest_phone and check_in and check_out):
             conn.close()
             return jsonify({"status": "error", "message": "Mohon lengkapi formulir pemesanan"}), 400
 
-        start = datetime.datetime.strptime(check_in, "%Y-%m-%d").date()
-        end = datetime.datetime.strptime(check_out, "%Y-%m-%d").date()
-        
-        if end <= start:
-            conn.close()
-            return jsonify({"status": "error", "message": "Tanggal Check-out harus setelah Check-in"}), 400
-
-        calc_res = db.calculate_booking_price(check_in, check_out)
-        for night_item in calc_res['breakdown']:
-            if night_item['status'] == 'booked':
-                conn.close()
-                return jsonify({"status": "error", "message": f"Maaf, tanggal {night_item['date']} ({night_item['day_name']}) sudah terbooking!"}), 400
-        
-        total_price = calc_res['total_price']
-
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO bookings (guest_name, guest_phone, check_in, check_out, total_price, notes)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (guest_name, guest_phone, check_in, check_out, total_price, notes))
-        conn.commit()
-        booking_id = cursor.lastrowid
+        res = db.create_booking_request(guest_name, guest_phone, check_in, check_out, guest_ig, total_guests, notes)
         conn.close()
-
-        db.batch_update_dates(check_in, (end - datetime.timedelta(days=1)).strftime("%Y-%m-%d"), status="booked", note=f"Booked: {guest_name}")
-
-        return jsonify({
-            "status": "success",
-            "booking_id": booking_id,
-            "total_price": total_price,
-            "breakdown": calc_res['breakdown'],
-            "message": "Pemesanan berhasil dibuat!"
-        })
+        return jsonify(res)
 
     elif request.method == 'DELETE':
         booking_id = request.args.get('id')
         if booking_id:
-            booking = conn.execute("SELECT * FROM bookings WHERE id=?", (booking_id,)).fetchone()
-            if booking:
-                start = datetime.datetime.strptime(booking['check_in'], "%Y-%m-%d").date()
-                end = datetime.datetime.strptime(booking['check_out'], "%Y-%m-%d").date() - datetime.timedelta(days=1)
-                db.batch_update_dates(start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"), status="ready", note="")
-                conn.execute("DELETE FROM payments WHERE booking_id=?", (booking_id,))
-                conn.execute("DELETE FROM bookings WHERE id=?", (booking_id,))
-                conn.commit()
+            res = db.cancel_booking(booking_id, reason="Admin deleted booking")
+            conn.close()
+            return jsonify(res)
         conn.close()
-        return jsonify({"status": "success", "message": "Booking dibatalkan"})
+        return jsonify({"status": "error", "message": "ID tidak ditemukan"}), 400
+
+@app.route('/api/bookings/confirm', methods=['POST'])
+def confirm_booking_endpoint():
+    data = request.json or {}
+    booking_id = data.get('booking_id') or request.args.get('id')
+    if not booking_id:
+        return jsonify({"status": "error", "message": "booking_id wajib"}), 400
+    res = db.confirm_booking(booking_id)
+    return jsonify(res)
+
+@app.route('/api/bookings/reject', methods=['POST'])
+def reject_booking_endpoint():
+    data = request.json or {}
+    booking_id = data.get('booking_id') or request.args.get('id')
+    reason = data.get('reason', '')
+    if not booking_id:
+        return jsonify({"status": "error", "message": "booking_id wajib"}), 400
+    res = db.reject_booking(booking_id, reason)
+    return jsonify(res)
+
+@app.route('/api/bookings/cancel', methods=['POST'])
+def cancel_booking_endpoint():
+    data = request.json or {}
+    booking_id = data.get('booking_id') or request.args.get('id')
+    reason = data.get('reason', '')
+    if not booking_id:
+        return jsonify({"status": "error", "message": "booking_id wajib"}), 400
+    res = db.cancel_booking(booking_id, reason)
+    return jsonify(res)
 
 @app.route('/api/payments', methods=['GET', 'POST', 'DELETE'])
 def handle_payments():
@@ -444,14 +444,13 @@ def export_csv_report():
     output = io.StringIO()
     writer = csv.writer(output)
     
-    # Header & Income Section
-    writer.writerow([f"LAPORAN KEUANGAN VILLA - PERIODE: {month}"])
+    writer.writerow([f"LAPORAN KEUANGAN VILLA BABEH - PERIODE: {month}"])
     writer.writerow([])
     writer.writerow(["--- 1. RINCIAN PEMASUKAN RESERVASI ---"])
     writer.writerow([
         "No. Invoice", "Nama Tamu", "No. WhatsApp", "Tanggal Check-In", 
         "Tanggal Check-Out", "Total Biaya (Rp)", "Kas Masuk / DP (Rp)", 
-        "Sisa Tagihan (Rp)", "Status Pembayaran", "Catatan"
+        "Sisa Tagihan (Rp)", "Status Booking", "Catatan"
     ])
 
     total_omset = 0
@@ -467,14 +466,8 @@ def export_csv_report():
         total_paid = sum(p['amount'] for p in payments)
         remaining = max(0, b_dict['total_price'] - total_paid)
         
-        if remaining <= 0 and total_paid > 0:
-            p_status = "LUNAS"
-        elif total_paid > 0:
-            p_status = "DP TERBAYAR"
-        else:
-            p_status = "BELUM BAYAR"
-
-        inv_no = f"INV/VB/{b_dict['check_in'].replace('-', '')[:6]}/{str(b_dict['id']).zfill(3)}"
+        p_status = b_dict.get('status', 'PENDING')
+        inv_no = b_dict.get('booking_code') or f"INV/VB/{b_dict['check_in'].replace('-', '')[:6]}/{str(b_dict['id']).zfill(3)}"
         writer.writerow([
             inv_no, b_dict['guest_name'], b_dict['guest_phone'], 
             b_dict['check_in'], b_dict['check_out'], b_dict['total_price'],
@@ -493,7 +486,6 @@ def export_csv_report():
     writer.writerow(["TOTAL SISA PIUTANG", total_sisa])
     writer.writerow([])
 
-    # Expenses Section
     writer.writerow(["--- 2. RINCIAN PENGELUARAN VILLA ---"])
     writer.writerow(["ID", "Pengeluaran", "Kategori", "Jumlah Biaya (Rp)", "Tanggal Pengeluaran", "Catatan"])
     
@@ -506,7 +498,6 @@ def export_csv_report():
     writer.writerow(["TOTAL PENGELUARAN VILLA", total_pengeluaran])
     writer.writerow([])
 
-    # Summary Section
     net_profit = total_kas_masuk - total_pengeluaran
     writer.writerow(["--- 3. RINGKASAN LABA BERSIH (NET PROFIT) ---"])
     writer.writerow(["TOTAL KAS MASUK (PEMASUKAN)", total_kas_masuk])
@@ -520,4 +511,3 @@ def export_csv_report():
 if __name__ == '__main__':
     print("Starting Villa Babeh Server at http://127.0.0.1:5000 ...")
     app.run(host='0.0.0.0', port=5000, debug=True)
-

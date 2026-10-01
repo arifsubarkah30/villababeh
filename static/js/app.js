@@ -51,23 +51,15 @@ async function initApp() {
 // SETTINGS, FACILITIES & GALLERY LOADING
 // -------------------------------------------------------------
 async function loadSettings() {
-    const cached = localStorage.getItem("villa_settings_cache");
-    if (cached) {
-        try {
-            appSettings = JSON.parse(cached);
-            renderSettingsToUI();
-        } catch (e) {}
-    }
     try {
         const res = await fetch("/api/settings");
         const data = await res.json();
         if (data.status === "success" && data.settings && Object.keys(data.settings).length > 0) {
             appSettings = { ...appSettings, ...data.settings };
-            localStorage.setItem("villa_settings_cache", JSON.stringify(appSettings));
             renderSettingsToUI();
         }
     } catch (e) {
-        console.error("Gagal memuat settings:", e);
+        console.error("Gagal memuat settings dari Supabase:", e);
     }
 }
 
@@ -104,7 +96,6 @@ function renderSettingsToUI() {
     const weekendPrice = document.getElementById("infoWeekendPrice");
     if (weekendPrice) weekendPrice.innerText = formatRupiah(appSettings.weekend_price || 3850000);
 
-    // Hero background image
     const heroBg = document.getElementById("heroBgImg");
     if (heroBg && appSettings.hero_image) {
         heroBg.style.backgroundImage = `url('${appSettings.hero_image}')`;
@@ -114,7 +105,6 @@ function renderSettingsToUI() {
         heroCard.src = appSettings.hero_image;
     }
 
-    // Logo render in Navbar
     const navLogoImg = document.getElementById("navLogoImg");
     const navLogoBadge = document.getElementById("navLogoBadge");
     if (appSettings.villa_logo) {
@@ -128,7 +118,6 @@ function renderSettingsToUI() {
         if (navLogoBadge) navLogoBadge.classList.remove("hidden");
     }
 
-    // Render 4 Kotak Highlight Beranda
     const hlTitle1 = document.getElementById("hlTitle1");
     if (hlTitle1) hlTitle1.innerText = appSettings.highlight_1_title || "4 Kamar";
     const hlSub1 = document.getElementById("hlSub1");
@@ -151,28 +140,15 @@ function renderSettingsToUI() {
 }
 
 async function loadFacilities() {
-    const cached = localStorage.getItem("villa_facilities_cache");
-    if (cached) {
-        try {
-            const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                facilitiesData = parsed;
-                renderFacilitiesUI();
-            }
-        } catch (e) {}
-    }
     try {
         const res = await fetch("/api/facilities");
         const data = await res.json();
-        if (data.status === "success") {
-            if (data.facilities && data.facilities.length > 0) {
-                facilitiesData = data.facilities;
-            }
-            localStorage.setItem("villa_facilities_cache", JSON.stringify(facilitiesData));
+        if (data.status === "success" && Array.isArray(data.facilities)) {
+            facilitiesData = data.facilities;
             renderFacilitiesUI();
         }
     } catch (e) {
-        console.error("Gagal memuat fasilitas:", e);
+        console.error("Gagal memuat fasilitas dari Supabase:", e);
     }
 }
 
@@ -197,7 +173,6 @@ function renderFacilitiesUI() {
                         <span>${f.category || 'Fasilitas'}</span>
                     </div>
 
-                    <!-- Admin Edit Overlay Badge -->
                     <div class="admin-photo-badge hidden absolute inset-0 bg-slate-900/60 flex items-center justify-center text-white text-xs font-bold transition">
                         <span class="bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg shadow flex items-center space-x-1">
                             📷 Klik untuk Ubah Foto
@@ -219,28 +194,15 @@ function renderFacilitiesUI() {
 }
 
 async function loadGallery() {
-    const cached = localStorage.getItem("villa_gallery_cache");
-    if (cached) {
-        try {
-            const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                galleryData = parsed;
-                renderGalleryUI();
-            }
-        } catch (e) {}
-    }
     try {
         const res = await fetch("/api/gallery");
         const data = await res.json();
-        if (data.status === "success") {
-            if (data.gallery && data.gallery.length > 0) {
-                galleryData = data.gallery;
-            }
-            localStorage.setItem("villa_gallery_cache", JSON.stringify(galleryData));
+        if (data.status === "success" && Array.isArray(data.gallery)) {
+            galleryData = data.gallery;
             renderGalleryUI();
         }
     } catch (e) {
-        console.error("Gagal memuat galeri:", e);
+        console.error("Gagal memuat galeri dari Supabase:", e);
     }
 }
 
@@ -403,23 +365,27 @@ async function handleLocalFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
+    const preview = document.getElementById("photoModalPreview");
+    const urlInput = document.getElementById("photoUrlInput");
+
+    const tempUrl = URL.createObjectURL(file);
+    preview.src = tempUrl;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
     try {
-        const base64Url = await compressAndConvertToBase64(file, 1200, 0.8);
-        document.getElementById("photoUrlInput").value = base64Url;
-        document.getElementById("photoModalPreview").src = base64Url;
-    } catch (e) {
-        const formData = new FormData();
-        formData.append("file", file);
-        try {
-            const res = await fetch("/api/upload", { method: "POST", body: formData });
-            const data = await res.json();
-            if (data.status === "success") {
-                document.getElementById("photoUrlInput").value = data.image_url;
-                document.getElementById("photoModalPreview").src = data.image_url;
-            }
-        } catch (err) {
-            alert("Gagal mengunggah foto.");
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        if (data.status === "success" && data.image_url) {
+            urlInput.value = data.image_url;
+            preview.src = data.image_url;
+        } else {
+            alert(data.message || "Gagal mengunggah foto ke Supabase Storage.");
         }
+    } catch (err) {
+        console.error("Upload error:", err);
+        alert("Terjadi kesalahan saat mengunggah foto.");
     }
 }
 
