@@ -24,6 +24,8 @@ class PgCursorWrapper:
     def execute(self, sql, params=None):
         params = params or ()
         sql_conv = sql.replace("?", "%s")
+        sql_conv = sql_conv.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+        
         if "INSERT OR REPLACE INTO settings" in sql_conv:
             sql_conv = sql_conv.replace(
                 "INSERT OR REPLACE INTO settings (key, value) VALUES (%s, %s)",
@@ -44,6 +46,10 @@ class PgCursorWrapper:
                 "INSERT OR IGNORE INTO settings (key, value) VALUES (%s, %s)",
                 "INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING"
             )
+        elif "INSERT OR REPLACE INTO" in sql_conv:
+            sql_conv = sql_conv.replace("INSERT OR REPLACE INTO", "INSERT INTO")
+        elif "INSERT OR IGNORE INTO" in sql_conv:
+            sql_conv = sql_conv.replace("INSERT OR IGNORE INTO", "INSERT INTO") + " ON CONFLICT DO NOTHING"
 
         if any(tok in sql_conv for tok in ["INSERT INTO bookings", "INSERT INTO payments", "INSERT INTO expenses", "INSERT INTO facilities", "INSERT INTO gallery"]):
             if "RETURNING" not in sql_conv:
