@@ -58,12 +58,21 @@ def db_status():
     try:
         conn = db.get_db_connection()
         res = conn.execute("SELECT current_database(), current_user").fetchone()
+        
+        tables = []
+        try:
+            tbl_rows = conn.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name").fetchall()
+            tables = [r["table_name"] for r in tbl_rows]
+        except Exception:
+            pass
+
         conn.close()
         return jsonify({
             "status": "success",
             "db_type": "Supabase PostgreSQL",
             "connected_database": res["current_database"] if res else "postgres",
-            "user": res["current_user"] if res else "postgres"
+            "user": res["current_user"] if res else "postgres",
+            "tables": tables
         })
     except Exception as e:
         return jsonify({
@@ -112,18 +121,27 @@ def upload_file():
 
 @app.route('/api/calendar')
 def get_calendar():
-    year = int(request.args.get('year', datetime.date.today().year))
-    month = int(request.args.get('month', datetime.date.today().month))
-    for_admin = request.args.get('for_admin', 'false').lower() == 'true'
-    
-    cal_res = db.get_month_calendar(year, month, for_public=not for_admin)
-    return jsonify({
-        "status": "success",
-        "year": year,
-        "month": month,
-        "dates": cal_res["dates"],
-        "is_released": cal_res["is_released"]
-    })
+    try:
+        year = int(request.args.get('year', datetime.date.today().year))
+        month = int(request.args.get('month', datetime.date.today().month))
+        for_admin = request.args.get('for_admin', 'false').lower() == 'true'
+        
+        cal_res = db.get_month_calendar(year, month, for_public=not for_admin)
+        return jsonify({
+            "status": "success",
+            "year": year,
+            "month": month,
+            "dates": cal_res["dates"],
+            "is_released": cal_res["is_released"]
+        })
+    except Exception as e:
+        import traceback
+        print(f"Error in /api/calendar: {e}\n{traceback.format_exc()}")
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
 
 @app.route('/api/calendar/toggle_release_month', methods=['POST'])
 def toggle_release_month():
