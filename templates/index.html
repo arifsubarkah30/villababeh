@@ -143,8 +143,8 @@
                         <div id="hlSub2" class="text-xs text-teal-100">{{ settings.highlight_2_sub or 'Kolam Renang Bersih' }}</div>
                     </div>
                     <div class="bg-white/10 backdrop-blur-sm border border-white/10 p-3.5 rounded-2xl text-center">
-                        <div id="hlTitle3" class="text-amber-400 font-bold text-xl sm:text-2xl">{{ settings.highlight_3_title or '30 Orang' }}</div>
-                        <div id="hlSub3" class="text-xs text-teal-100">{{ settings.highlight_3_sub or 'Kapasitas Tamu' }}</div>
+                        <div id="hlTitle3" class="text-amber-400 font-bold text-xl sm:text-2xl">{{ settings.highlight_3_title or '25 Orang' }}</div>
+                        <div id="hlSub3" class="text-xs text-teal-100">{{ settings.highlight_3_sub or 'Kapasitas Maksimal' }}</div>
                     </div>
                     <div class="bg-white/10 backdrop-blur-sm border border-white/10 p-3.5 rounded-2xl text-center">
                         <div id="hlTitle4" class="text-amber-400 font-bold text-xl sm:text-2xl">{{ settings.highlight_4_title or 'Smart TV' }}</div>
@@ -448,7 +448,10 @@
                 © <span id="copyrightYear">2026</span> <strong class="text-white">{{ settings.villa_name }}</strong>. Hak Cipta Dilindungi.
             </div>
             <div class="flex items-center space-x-6">
-                <a href="/admin" class="hover:text-amber-400 transition font-bold">⭐ Portal Admin Khusus (/admin)</a>
+                <a href="/admin" class="hover:text-amber-400 transition font-bold flex items-center space-x-1.5" title="Login Admin Pengelola">
+                    <i data-lucide="lock" class="w-3.5 h-3.5 inline text-gray-500 hover:text-amber-400"></i>
+                    <span>Portal Admin (/admin)</span>
+                </a>
             </div>
         </div>
     </footer>
@@ -521,6 +524,61 @@
                 </button>
                 <button onclick="closeSingleDateModal()" class="bg-gray-100 text-gray-700 px-4 py-3 rounded-xl text-sm font-semibold">
                     Batal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Booking Submitted Confirmation -->
+    <div id="bookingSubmittedModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-fade-in border border-emerald-100">
+            <div class="text-center space-y-2">
+                <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
+                    ✓
+                </div>
+                <h3 class="font-serif-title font-bold text-xl text-teal-950">Permintaan Booking Diterima!</h3>
+                <p class="text-xs text-gray-600">Pesanan Anda telah dicatat ke sistem dan sedang menunggu konfirmasi admin.</p>
+            </div>
+
+            <div class="bg-teal-50/70 border border-teal-100 rounded-2xl p-4 text-xs space-y-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500 font-semibold">Nomor Booking:</span>
+                    <strong id="bsmBookingCode" class="font-mono text-indigo-700 font-bold bg-white px-2 py-0.5 rounded border border-indigo-200">VB-000000</strong>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500 font-semibold">Nama Pemesan:</span>
+                    <strong id="bsmGuestName" class="text-gray-800">-</strong>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500 font-semibold">Jadwal Menginap:</span>
+                    <strong id="bsmDates" class="text-gray-800 text-right">-</strong>
+                </div>
+                <div class="border-t border-teal-200 pt-2 flex justify-between items-center">
+                    <span class="text-gray-700 font-bold">Total Biaya:</span>
+                    <strong id="bsmTotalPrice" class="text-teal-950 text-sm font-extrabold">-</strong>
+                </div>
+                <div class="flex justify-between items-center text-indigo-900 font-semibold">
+                    <span>Ketentuan DP (50%):</span>
+                    <strong id="bsmDp" class="text-indigo-800">-</strong>
+                </div>
+                <div class="flex justify-between items-center text-gray-600">
+                    <span>Sisa Pelunasan:</span>
+                    <strong id="bsmRemaining">-</strong>
+                </div>
+                <div class="pt-1">
+                    <span class="bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2 py-0.5 rounded-full text-[10px] inline-block">
+                        ⏳ Status: Menunggu Konfirmasi Admin
+                    </span>
+                </div>
+            </div>
+
+            <p class="text-[11px] text-gray-500 text-center leading-relaxed">
+                Admin pengelola akan segera menghubungi Anda melalui WhatsApp untuk mengonfirmasi ketersediaan & memverifikasi pembayaran DP.
+            </p>
+
+            <div class="pt-2">
+                <button type="button" onclick="closeBookingSubmittedModal()" class="w-full bg-teal-800 hover:bg-teal-900 text-white font-bold py-3 rounded-xl text-xs transition shadow-md">
+                    Mengerti & Tutup
                 </button>
             </div>
         </div>

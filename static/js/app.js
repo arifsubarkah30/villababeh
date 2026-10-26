@@ -1,5 +1,22 @@
 // Villa Babeh Interactive Calendar, Dynamic Photos, Invoices, Payment Simulation & Web App Logic
 
+// Safe Local Date Helpers (avoid UTC offset -1 day shifts)
+function addDaysToIso(isoDateStr, days) {
+    if (!isoDateStr) return "";
+    const parts = isoDateStr.split('-').map(Number);
+    const date = new Date(parts[0], parts[1] - 1, parts[2] + days);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function parseIsoParts(isoDateStr) {
+    if (!isoDateStr) return new Date();
+    const parts = isoDateStr.split('-').map(Number);
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1; // 1-12
 let calendarDates = {};
@@ -129,9 +146,9 @@ function renderSettingsToUI() {
     if (hlSub2) hlSub2.innerText = appSettings.highlight_2_sub || "Kolam Renang Bersih";
 
     const hlTitle3 = document.getElementById("hlTitle3");
-    if (hlTitle3) hlTitle3.innerText = appSettings.highlight_3_title || "30 Orang";
+    if (hlTitle3) hlTitle3.innerText = appSettings.highlight_3_title || "25 Orang";
     const hlSub3 = document.getElementById("hlSub3");
-    if (hlSub3) hlSub3.innerText = appSettings.highlight_3_sub || "Kapasitas Tamu";
+    if (hlSub3) hlSub3.innerText = appSettings.highlight_3_sub || "Kapasitas Tamu Maksimal";
 
     const hlTitle4 = document.getElementById("hlTitle4");
     if (hlTitle4) hlTitle4.innerText = appSettings.highlight_4_title || "Smart TV";
@@ -614,6 +631,9 @@ function renderCalendarGrid(year, month) {
         if (item.status === "booked") {
             statusClass = "cell-booked";
             statusText = "Booked";
+        } else if (item.status === "pending") {
+            statusClass = "cell-pending";
+            statusText = "Menunggu";
         } else if (item.status === "maintenance") {
             statusClass = "cell-maintenance";
             statusText = "Maint";
@@ -686,17 +706,15 @@ function handleCellClick(dateStr, item) {
             checkInDate = dateStr;
             checkOutDate = null;
         } else {
-            let curr = new Date(checkInDate);
-            const target = new Date(dateStr);
+            let curr = checkInDate;
             let hasBooked = false;
 
-            while (curr < target) {
-                const ds = curr.toISOString().split("T")[0];
-                if (calendarDates[ds] && (calendarDates[ds].status === "booked" || calendarDates[ds].status === "maintenance")) {
+            while (curr < dateStr) {
+                if (calendarDates[curr] && (calendarDates[curr].status === "booked" || calendarDates[curr].status === "maintenance")) {
                     hasBooked = true;
                     break;
                 }
-                curr.setDate(curr.getDate() + 1);
+                curr = addDaysToIso(curr, 1);
             }
 
             if (hasBooked) {
@@ -716,22 +734,15 @@ function getNightBreakdown(startStr, endStr) {
     const dayNamesId = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
     const monthShortNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
 
-    let s = new Date(startStr);
-    let e = new Date(endStr);
-    let curr = new Date(s);
-
+    let currStr = startStr;
     let breakdown = [];
     let totalPrice = 0;
 
-    while (curr < e) {
-        const year = curr.getFullYear();
-        const month = String(curr.getMonth() + 1).padStart(2, "0");
-        const dayNum = String(curr.getDate()).padStart(2, "0");
-        const ds = `${year}-${month}-${dayNum}`;
-
-        const day = curr.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+    while (currStr < endStr) {
+        const currDate = parseIsoParts(currStr);
+        const day = currDate.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
         const dayName = dayNamesId[day];
-        const shortDate = `${curr.getDate()} ${monthShortNames[curr.getMonth()]}`;
+        const shortDate = `${currDate.getDate()} ${monthShortNames[currDate.getMonth()]}`;
 
         let price = 0;
         let isSpecial = false;
@@ -741,8 +752,8 @@ function getNightBreakdown(startStr, endStr) {
         const defaultWeekend = parseInt(appSettings.weekend_price || 3850000);
         const stdPrice = day === 6 ? defaultWeekend : (day === 5 ? defaultMiddle : defaultWeekday);
 
-        if (calendarDates[ds] && calendarDates[ds].price) {
-            price = calendarDates[ds].price;
+        if (calendarDates[currStr] && calendarDates[currStr].price) {
+            price = calendarDates[currStr].price;
             if (price !== stdPrice) {
                 isSpecial = true;
             }
@@ -751,7 +762,7 @@ function getNightBreakdown(startStr, endStr) {
         }
 
         breakdown.push({
-            date: ds,
+            date: currStr,
             dayName: dayName,
             shortDate: shortDate,
             price: price,
@@ -759,7 +770,7 @@ function getNightBreakdown(startStr, endStr) {
         });
 
         totalPrice += price;
-        curr.setDate(curr.getDate() + 1);
+        currStr = addDaysToIso(currStr, 1);
     }
 
     return {
@@ -863,6 +874,26 @@ function calculateTotalPriceRange(startStr, endStr) {
 // -------------------------------------------------------------
 // BOOKING SUBMISSION VIA WHATSAPP (Format Pemesanan Official)
 // -------------------------------------------------------------
+function showBookingSubmittedModal(info) {
+    const modal = document.getElementById("bookingSubmittedModal");
+    if (modal) {
+        document.getElementById("bsmBookingCode").innerText = info.bookingCode;
+        document.getElementById("bsmGuestName").innerText = info.guestName;
+        document.getElementById("bsmDates").innerText = info.datesText;
+        document.getElementById("bsmTotalPrice").innerText = formatRupiah(info.totalPrice);
+        document.getElementById("bsmDp").innerText = formatRupiah(info.downPayment);
+        document.getElementById("bsmRemaining").innerText = formatRupiah(info.remainingBalance);
+        modal.classList.remove("hidden");
+    } else {
+        alert(`✅ PERMINTAAN BOOKING TERKIRIM!\n\nNomor Booking: ${info.bookingCode}\nStatus: MENUNGGU KONFIRMASI ADMIN\n\nAdmin akan segera memeriksa ketersediaan dan menghubungi Anda via WhatsApp untuk verifikasi & instruksi DP 50% (${formatRupiah(info.downPayment)}).\n\nTerima kasih telah memilih Villa Babeh!`);
+    }
+}
+
+function closeBookingSubmittedModal() {
+    const modal = document.getElementById("bookingSubmittedModal");
+    if (modal) modal.classList.add("hidden");
+}
+
 async function submitBooking(event) {
     event.preventDefault();
     if (!checkInDate || !checkOutDate) {
@@ -870,19 +901,30 @@ async function submitBooking(event) {
         return;
     }
 
-    const guestName = document.getElementById("guestName").value;
-    const guestPhone = document.getElementById("guestPhone").value;
+    const submitBtn = document.getElementById("btnSubmitBooking");
+    const originalBtnText = submitBtn ? submitBtn.innerHTML : "";
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>⏳ Mengajukan Booking...</span>`;
+    }
+
+    const guestName = document.getElementById("guestName").value.trim();
+    const guestPhone = document.getElementById("guestPhone").value.trim();
     const totalGuestsElem = document.getElementById("totalGuests");
-    const totalGuests = totalGuestsElem && totalGuestsElem.value ? totalGuestsElem.value : "10 Orang";
+    const totalGuests = totalGuestsElem && totalGuestsElem.value ? totalGuestsElem.value.trim() : "10 Orang";
     const guestIgElem = document.getElementById("guestIg");
-    const guestIg = guestIgElem && guestIgElem.value ? guestIgElem.value : "-";
+    const guestIg = guestIgElem && guestIgElem.value ? guestIgElem.value.trim() : "-";
 
     const { breakdown, totalPrice, nights } = getNightBreakdown(checkInDate, checkOutDate);
     const datesText = `${formatDateIndo(checkInDate)} s/d ${formatDateIndo(checkOutDate)} (${nights} Malam)`;
     const breakdownText = breakdown.map(b => `- ${b.dayName} (${b.shortDate}): ${formatRupiah(b.price)}`).join("\n");
 
+    let bookingCode = "VB-" + Date.now().toString().slice(-6);
+    let downPayment = Math.round(totalPrice * 0.5);
+    let remainingBalance = totalPrice - downPayment;
+
     try {
-        await fetch("/api/bookings", {
+        const res = await fetch("/api/bookings", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -894,27 +936,70 @@ async function submitBooking(event) {
                 notes: `Tamu: ${totalGuests} | IG: ${guestIg}`
             })
         });
-    } catch (e) {}
 
-    const message = `Format Pemesanan Villa Babeh
+        const data = await res.json();
+        if (data.status === "error") {
+            alert("⚠️ " + (data.message || "Tanggal yang dipilih tidak tersedia. Silakan pilih tanggal lain."));
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+            }
+            await loadCalendar(currentYear, currentMonth);
+            return;
+        }
 
-Nama pemesan : ${guestName}
-Hp : ${guestPhone}
-Tgl menginap : ${datesText}
-Total tamu : ${totalGuests}
-Nama instagram : ${guestIg}
+        if (data.status === "success") {
+            if (data.booking_code) bookingCode = data.booking_code;
+            if (data.down_payment) downPayment = data.down_payment;
+            if (data.remaining_balance) remainingBalance = data.remaining_balance;
+        }
+    } catch (e) {
+        console.warn("Backend booking log fallback:", e);
+    }
 
-Rincian Harga Per Malam:
+    const message = `*FORMAT PEMESANAN RESMI VILLA BABEH*
+
+Nomor Booking: *${bookingCode}*
+Status: *MENUNGGU KONFIRMASI ADMIN*
+
+Nama Pemesan: ${guestName}
+No. WhatsApp: ${guestPhone}
+Tgl Menginap: ${datesText}
+Total Tamu: ${totalGuests}
+Instagram: ${guestIg}
+
+*Rincian Harga Per Malam:*
 ${breakdownText}
 
-Total Biaya: ${formatRupiah(totalPrice)}`;
+*Total Biaya*: ${formatRupiah(totalPrice)}
+*DP 50%*: ${formatRupiah(downPayment)}
+*Sisa Pelunasan*: ${formatRupiah(remainingBalance)}
+
+_Halo Admin Villa Babeh, saya telah mengajukan pesanan di atas melalui website resmi. Mohon konfirmasi ketersediaan & instruksi pembayaran DP. Terima kasih!_`;
 
     const waNumber = appSettings.whatsapp || "6281234567890";
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/${waNumber}?text=${encodedMessage}`, "_blank");
 
+    showBookingSubmittedModal({
+        bookingCode,
+        guestName,
+        guestPhone,
+        datesText,
+        nights,
+        totalGuests,
+        totalPrice,
+        downPayment,
+        remainingBalance
+    });
+
     resetDateSelection();
-    document.getElementById("bookingForm").reset();
+    const form = document.getElementById("bookingForm");
+    if (form) form.reset();
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = originalBtnText;
+    }
     loadCalendar(currentYear, currentMonth);
 }
 
@@ -1514,6 +1599,10 @@ async function loadAdminBookings() {
 
 function filterAdminBookings() {
     const tbody = document.getElementById("bookingsTableBody");
+    const searchInput = document.getElementById("searchBookingInput");
+    const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : "";
+    const statusFilterElem = document.getElementById("filterBookingStatus");
+    const statusFilter = statusFilterElem ? statusFilterElem.value : "all";
     const monthFilterElem = document.getElementById("filterBookingMonth");
     const monthFilter = monthFilterElem ? monthFilterElem.value : "all";
     const sortOrderElem = document.getElementById("sortBookingOrder");
@@ -1527,14 +1616,48 @@ function filterAdminBookings() {
     if (!tbody) return;
 
     if (!allBookingsData || allBookingsData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">Belum ada riwayat booking.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400 font-medium">Belum ada riwayat pemesanan villa.</td></tr>`;
         if (statsBadge) statsBadge.innerText = "Total: 0 Booking";
         return;
     }
 
     let filtered = allBookingsData.filter(b => {
-        if (monthFilter === "all") return true;
-        return b.check_in.startsWith(monthFilter);
+        // Month filter
+        if (monthFilter !== "all" && !b.check_in.startsWith(monthFilter)) {
+            return false;
+        }
+
+        // Status filter
+        const rawStatus = (b.status || b.booking_status || "MENUNGGU KONFIRMASI").toUpperCase();
+        if (statusFilter !== "all") {
+            const filterUpper = statusFilter.toUpperCase();
+            if (filterUpper === "PENDING" && !rawStatus.includes("MENUNGGU") && rawStatus !== "PENDING") {
+                return false;
+            } else if (filterUpper === "CONFIRMED" && rawStatus !== "DIKONFIRMASI" && rawStatus !== "CONFIRMED") {
+                return false;
+            } else if (filterUpper === "WAITING_PAYMENT" && !rawStatus.includes("PEMBAYARAN")) {
+                return false;
+            } else if (filterUpper === "REJECTED" && rawStatus !== "DITOLAK" && rawStatus !== "REJECTED") {
+                return false;
+            } else if (filterUpper === "CANCELLED" && rawStatus !== "DIBATALKAN" && rawStatus !== "CANCELLED") {
+                return false;
+            } else if (!["PENDING", "CONFIRMED", "WAITING_PAYMENT", "REJECTED", "CANCELLED"].includes(filterUpper) && rawStatus !== filterUpper) {
+                return false;
+            }
+        }
+
+        // Search query
+        if (searchQuery) {
+            const matchName = (b.guest_name || "").toLowerCase().includes(searchQuery);
+            const matchPhone = (b.guest_phone || "").toLowerCase().includes(searchQuery);
+            const matchCode = (b.booking_code || "").toLowerCase().includes(searchQuery);
+            const matchNotes = (b.notes || "").toLowerCase().includes(searchQuery);
+            if (!matchName && !matchPhone && !matchCode && !matchNotes) {
+                return false;
+            }
+        }
+
+        return true;
     });
 
     filtered.sort((a, b) => {
@@ -1551,59 +1674,200 @@ function filterAdminBookings() {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">Tidak ada booking untuk bulan ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400 font-medium">Tidak ada booking yang cocok dengan filter.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = filtered.map(b => {
+        const rawStatus = (b.status || b.booking_status || "MENUNGGU KONFIRMASI").toUpperCase();
+        const nights = calculateNights(b.check_in, b.check_out);
+        const bookingCode = b.booking_code || `VB-${b.id}`;
+
+        // Status Booking Badge
         let statusBadgeHTML = '';
+        if (rawStatus.includes("MENUNGGU") || rawStatus === "PENDING") {
+            statusBadgeHTML = `<span class="bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2.5 py-1 rounded-full text-[10px] inline-flex items-center space-x-1 shadow-sm"><span>⏳</span><span>${b.status || 'Menunggu Konfirmasi'}</span></span>`;
+        } else if (rawStatus === "DIKONFIRMASI" || rawStatus === "CONFIRMED") {
+            statusBadgeHTML = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold px-2.5 py-1 rounded-full text-[10px] inline-flex items-center space-x-1 shadow-sm"><span>🟢</span><span>Dikonfirmasi</span></span>`;
+        } else if (rawStatus === "DITOLAK" || rawStatus === "REJECTED") {
+            statusBadgeHTML = `<span class="bg-red-100 text-red-900 border border-red-300 font-bold px-2.5 py-1 rounded-full text-[10px] inline-flex items-center space-x-1"><span>❌</span><span>Ditolak</span></span>`;
+        } else if (rawStatus === "DIBATALKAN" || rawStatus === "CANCELLED") {
+            statusBadgeHTML = `<span class="bg-stone-100 text-stone-700 border border-stone-300 font-bold px-2.5 py-1 rounded-full text-[10px] inline-flex items-center space-x-1"><span>🚫</span><span>Dibatalkan</span></span>`;
+        } else if (rawStatus === "KEDALUWARSA") {
+            statusBadgeHTML = `<span class="bg-gray-100 text-gray-700 border border-gray-300 font-bold px-2.5 py-1 rounded-full text-[10px] inline-flex items-center space-x-1"><span>⏱️</span><span>Kedaluwarsa</span></span>`;
+        } else {
+            statusBadgeHTML = `<span class="bg-blue-100 text-blue-900 border border-blue-300 font-bold px-2.5 py-1 rounded-full text-[10px] inline-flex items-center space-x-1"><span>ℹ️</span><span>${b.status || rawStatus}</span></span>`;
+        }
+
+        // Payment status badge
+        let paymentBadgeHTML = '';
         if (b.payment_status === "LUNAS") {
-            statusBadgeHTML = `<span class="bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full text-[10px] border border-emerald-300">🟢 LUNAS</span>`;
+            paymentBadgeHTML = `<span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px] border border-emerald-300 inline-block">🟢 LUNAS</span>`;
         } else if (b.payment_status === "DP TERBAYAR") {
-            statusBadgeHTML = `
+            paymentBadgeHTML = `
                 <div class="space-y-0.5">
                     <span class="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full text-[10px] border border-amber-300 inline-block">🟡 DP TERBAYAR</span>
                     <span class="text-[10px] text-gray-500 block">Sisa: <strong class="text-red-600">${formatRupiah(b.remaining_balance)}</strong></span>
                 </div>
             `;
         } else {
-            statusBadgeHTML = `<span class="bg-red-100 text-red-700 font-bold px-2.5 py-1 rounded-full text-[10px] border border-red-300">🔴 BELUM BAYAR</span>`;
+            paymentBadgeHTML = `
+                <div class="space-y-0.5">
+                    <span class="bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full text-[10px] border border-red-300 inline-block">🔴 BELUM BAYAR</span>
+                    <span class="text-[10px] text-gray-500 block">DP: <strong class="text-indigo-700">${formatRupiah(Math.round(b.total_price * 0.5))}</strong></span>
+                </div>
+            `;
         }
 
+        // WhatsApp direct link with formatted message
+        const cleanPhone = (b.guest_phone || "").replace(/[^0-9]/g, "");
+        const waText = encodeURIComponent(`Halo ${b.guest_name}, kami dari pengelola Villa Babeh terkait pesanan booking Anda:\n- Kode: ${bookingCode}\n- Tgl: ${formatDateIndo(b.check_in)} s/d ${formatDateIndo(b.check_out)} (${nights} Malam)\n- Total: ${formatRupiah(b.total_price)}\n- DP 50%: ${formatRupiah(Math.round(b.total_price * 0.5))}\n\nApakah ada yang dapat kami bantu untuk konfirmasi & jadwal check-in Anda?`);
+
+        // Action buttons
+        const isPending = rawStatus.includes("MENUNGGU") || rawStatus === "PENDING";
+        const isConfirmed = rawStatus === "DIKONFIRMASI" || rawStatus === "CONFIRMED";
+
         return `
-            <tr class="hover:bg-gray-50 transition">
-                <td class="p-3 font-bold">
-                    <div class="flex items-center justify-between">
+            <tr class="hover:bg-teal-50/30 transition border-b border-gray-100 text-xs">
+                <td class="p-3 font-semibold text-gray-900">
+                    <div class="font-bold text-teal-950 text-sm flex items-center justify-between">
                         <span>${b.guest_name}</span>
-                        <button onclick="openInvoiceModal(${b.id})" title="Lihat/Cetak Invoice" class="ml-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-lg text-[10px] font-bold shadow-sm transition flex items-center space-x-1">
-                            <span>🧾 Invoice</span>
-                        </button>
                     </div>
+                    <div class="font-mono text-[10px] text-indigo-700 font-bold bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded inline-block mt-0.5">
+                        ${bookingCode}
+                    </div>
+                    ${b.notes ? `<div class="text-[10px] text-gray-500 mt-0.5 truncate max-w-[180px]" title="${b.notes}">${b.notes}</div>` : ''}
                 </td>
-                <td class="p-3"><a href="https://wa.me/${b.guest_phone}" target="_blank" class="text-emerald-600 underline font-medium">${b.guest_phone}</a></td>
-                <td class="p-3 font-semibold text-gray-800">${b.check_in}</td>
-                <td class="p-3 font-semibold text-gray-800">${b.check_out}</td>
-                <td class="p-3 font-bold text-gray-900">${formatRupiah(b.total_price)}</td>
+                <td class="p-3">
+                    <a href="https://wa.me/${cleanPhone}?text=${waText}" target="_blank" class="inline-flex items-center space-x-1.5 text-emerald-800 hover:text-emerald-950 font-bold bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2.5 py-1.5 rounded-xl shadow-sm transition" title="Chat Tamu via WhatsApp">
+                        <span>💬</span>
+                        <span>${b.guest_phone}</span>
+                    </a>
+                </td>
+                <td class="p-3">
+                    <div class="font-bold text-gray-900">${formatDateIndo(b.check_in)}</div>
+                    <div class="text-[11px] text-gray-500">s/d ${formatDateIndo(b.check_out)} (${nights} Malam)</div>
+                </td>
+                <td class="p-3 font-bold">
+                    <div class="text-teal-950 font-extrabold text-sm">${formatRupiah(b.total_price)}</div>
+                    <div class="text-[10px] text-gray-500 font-semibold">DP 50%: <span class="text-indigo-800">${formatRupiah(Math.round(b.total_price * 0.5))}</span></div>
+                </td>
                 <td class="p-3">${statusBadgeHTML}</td>
+                <td class="p-3">${paymentBadgeHTML}</td>
                 <td class="p-3 text-center">
-                    <div class="flex items-center justify-center space-x-1">
-                        <button onclick="lockBookingDates(${b.id}, '${b.check_in}', '${b.check_out}')" title="Kunci & Tandai Tanggal Terbooking di Kalender Publik" class="bg-amber-600 hover:bg-amber-700 text-white px-2 py-1 rounded-lg text-[11px] font-bold shadow transition flex items-center space-x-1">
-                            <span>🔒 Lock Tanggal</span>
-                        </button>
-                        <button onclick="openPaymentModal(${b.id})" title="Simulasi & Catat Pembayaran DP/Pelunasan" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded-lg text-[11px] font-bold shadow transition flex items-center space-x-1">
+                    <div class="flex flex-wrap items-center justify-center gap-1">
+                        ${isPending ? `
+                            <button onclick="confirmAdminBooking(${b.id})" title="Setujui Booking & Kunci Kalender" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded-lg text-[10px] shadow transition flex items-center space-x-1">
+                                <span>✓ Setujui</span>
+                            </button>
+                            <button onclick="rejectAdminBooking(${b.id})" title="Tolak Permintaan Booking" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2 py-1 rounded-lg text-[10px] shadow transition flex items-center space-x-1">
+                                <span>✕ Tolak</span>
+                            </button>
+                        ` : ''}
+                        ${isConfirmed ? `
+                            <button onclick="cancelAdminBooking(${b.id})" title="Batalkan Booking & Buka Kembali Kalender" class="bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 font-bold px-2 py-1 rounded-lg text-[10px] transition">
+                                <span>Batalkan</span>
+                            </button>
+                        ` : ''}
+                        <button onclick="openPaymentModal(${b.id})" title="Catat / Simulasi Pembayaran" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2 py-1 rounded-lg text-[10px] shadow transition flex items-center space-x-1">
                             <span>💳 +Bayar</span>
                         </button>
-                        <button onclick="openInvoiceModal(${b.id})" class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded-lg text-[11px] font-bold transition">
-                            🧾 Invoice
+                        <button onclick="openInvoiceModal(${b.id})" title="Lihat / Cetak Invoice" class="bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold px-2 py-1 rounded-lg text-[10px] transition">
+                            <span>🧾 Invoice</span>
                         </button>
-                        <button onclick="deleteBooking(${b.id})" class="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded-lg text-[11px] font-bold transition">
-                            Hapus
+                        <button onclick="deleteBooking(${b.id})" title="Hapus Permanen" class="bg-gray-100 hover:bg-red-100 text-gray-500 hover:text-red-700 px-1.5 py-1 rounded-lg text-xs transition">
+                            🗑
                         </button>
                     </div>
                 </td>
             </tr>
         `;
     }).join("");
+}
+
+async function confirmAdminBooking(bookingId) {
+    if (!confirm("Setujui permintaan booking ini dan kunci tanggal menginap di kalender publik?")) return;
+    try {
+        const res = await fetch("/api/bookings/confirm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ booking_id: bookingId })
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+            alert("✅ " + data.message);
+            await loadAdminBookings();
+            await loadCalendar(currentYear, currentMonth);
+        } else {
+            alert("❌ Gagal menyetujui booking: " + data.message);
+        }
+    } catch (e) {
+        alert("Terjadi kesalahan saat menghubungi server.");
+    }
+}
+
+async function rejectAdminBooking(bookingId) {
+    const reason = prompt("Alasan penolakan pesanan (opsional):", "Tanggal tidak tersedia / bentrok pesanan lain");
+    if (reason === null) return;
+    try {
+        const res = await fetch("/api/bookings/reject", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ booking_id: bookingId, reason: reason })
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+            alert("Pesanan booking berhasil ditolak.");
+            await loadAdminBookings();
+            await loadCalendar(currentYear, currentMonth);
+        } else {
+            alert("Gagal menolak booking: " + data.message);
+        }
+    } catch (e) {
+        alert("Terjadi kesalahan koneksi saat menolak booking.");
+    }
+}
+
+async function cancelAdminBooking(bookingId) {
+    const reason = prompt("Alasan pembatalan booking (opsional):", "Dibatalkan atas permintaan tamu / pengelola");
+    if (reason === null) return;
+    try {
+        const res = await fetch("/api/bookings/cancel", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ booking_id: bookingId, reason: reason })
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+            alert("Booking berhasil dibatalkan dan tanggal dibuka kembali di kalender.");
+            await loadAdminBookings();
+            await loadCalendar(currentYear, currentMonth);
+        } else {
+            alert("Gagal membatalkan booking: " + data.message);
+        }
+    } catch (e) {
+        alert("Terjadi kesalahan koneksi saat membatalkan booking.");
+    }
+}
+
+async function updateBookingStatus(bookingId, status) {
+    if (!status) return;
+    try {
+        const res = await fetch("/api/bookings/update_status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ booking_id: bookingId, status: status })
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+            await loadAdminBookings();
+            await loadCalendar(currentYear, currentMonth);
+        } else {
+            alert("Gagal memperbarui status: " + data.message);
+        }
+    } catch (e) {
+        alert("Terjadi kesalahan jaringan.");
+    }
 }
 
 async function lockBookingDates(bookingId, checkIn, checkOut) {

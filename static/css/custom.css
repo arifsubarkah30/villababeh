@@ -268,3 +268,31 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: #167D78;
 }
+
+
+/* Status Pending (Menunggu Konfirmasi) */
+.cell-pending {
+    background-color: #FEF3C7 !important;
+    border-color: #F59E0B !important;
+    color: #92400E !important;
+}
+.cell-pending .price-tag {
+    background-color: rgba(245, 158, 11, 0.2);
+    color: #92400E;
+}
+
+/* Mobile responsive enhancements */
+@media (max-width: 768px) {
+    .calendar-cell {
+        min-height: 62px;
+        padding: 4px;
+        border-radius: 10px;
+    }
+    .date-number {
+        font-size: 0.9rem;
+    }
+    .price-tag {
+        font-size: 0.6rem;
+        padding: 1px 2px;
+    }
+}

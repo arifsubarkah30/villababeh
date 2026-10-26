@@ -50,17 +50,21 @@
                 <p class="text-xs text-gray-500 font-semibold tracking-wider uppercase mt-1">Portal Khusus Pengelola & Investor</p>
             </div>
             
-            <form onsubmit="handleAdminLoginSubmit(event)" class="space-y-4 pt-2">
+            <form onsubmit="handleAdminLoginSubmit(event)" class="space-y-4 pt-2 text-left">
                 <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Masukkan PIN Admin</label>
-                    <input type="password" id="loginPinInput" value="" required placeholder="••••" class="w-full px-4 py-3 rounded-2xl border border-gray-300 text-center text-xl font-bold tracking-widest focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Username / Email</label>
+                    <input type="text" id="loginUsernameInput" value="admin" required placeholder="admin atau email" class="w-full px-4 py-3 rounded-2xl border border-gray-300 font-semibold text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
                 </div>
-                <button type="submit" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 rounded-2xl shadow-lg transition text-sm flex items-center justify-center space-x-2">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Password / PIN Admin</label>
+                    <input type="password" id="loginPinInput" value="" required placeholder="Masukkan Password atau PIN" class="w-full px-4 py-3 rounded-2xl border border-gray-300 text-sm font-semibold tracking-widest focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                </div>
+                <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 rounded-2xl shadow-lg transition text-sm flex items-center justify-center space-x-2">
                     <span>🔑 Masuk ke Dashboard Admin</span>
                 </button>
             </form>
             
-            <div class="pt-2 border-t border-gray-100">
+            <div class="pt-2 border-t border-gray-100 text-center">
                 <a href="/" class="text-xs text-teal-700 hover:underline font-semibold">← Kembali ke Website Utama</a>
             </div>
         </div>
@@ -332,55 +336,72 @@
             <div id="tabContentBookings" class="hidden space-y-6 animate-fade-in">
                 <div class="bg-white rounded-3xl p-6 shadow-md border border-teal-100 space-y-6">
                     
-                    <!-- Month Filter & Sorting Toolbar -->
+                    <!-- Search, Month Filter & Status Toolbar -->
                     <div class="flex flex-wrap justify-between items-center gap-3 bg-teal-50/60 p-4 rounded-2xl border border-teal-100">
-                        <div class="flex flex-wrap items-center gap-3 text-xs">
-                            <label class="font-bold text-gray-700">Filter Bulan:</label>
-                            <select id="filterBookingMonth" onchange="filterAdminBookings()" class="px-3.5 py-2 rounded-xl border border-gray-300 font-bold bg-white text-xs">
-                                <option value="all">🗓️ Semua Bulan</option>
-                                <option value="2026-01">Januari 2026</option>
-                                <option value="2026-02">Februari 2026</option>
-                                <option value="2026-03">Maret 2026</option>
-                                <option value="2026-04">April 2026</option>
-                                <option value="2026-05">Mei 2026</option>
-                                <option value="2026-06">Juni 2026</option>
-                                <option value="2026-07">Juli 2026</option>
-                                <option value="2026-08">Agustus 2026</option>
-                                <option value="2026-09" selected>September 2026</option>
-                                <option value="2026-10">Oktober 2026</option>
-                                <option value="2026-11">November 2026</option>
-                                <option value="2026-12">Desember 2026</option>
-                            </select>
-
-                            <label class="font-bold text-gray-700 ml-2">Urutan:</label>
-                            <select id="sortBookingOrder" onchange="filterAdminBookings()" class="px-3.5 py-2 rounded-xl border border-gray-300 text-xs bg-white font-medium">
-                                <option value="desc">Check-In Terbaru (Terbaru -> Terlama)</option>
-                                <option value="asc">Check-In Terlama (Terlama -> Terbaru)</option>
-                            </select>
+                        <div class="flex flex-wrap items-center gap-3 text-xs flex-1">
+                            <div>
+                                <input type="text" id="searchBookingInput" oninput="filterAdminBookings()" placeholder="🔍 Cari nama / no. booking..." class="px-3.5 py-2 rounded-xl border border-gray-300 font-medium bg-white text-xs w-44 sm:w-56 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <label class="font-bold text-gray-700">Status:</label>
+                                <select id="filterBookingStatus" onchange="filterAdminBookings()" class="px-3 py-2 rounded-xl border border-gray-300 font-bold bg-white text-xs shadow-sm">
+                                    <option value="all">Semua Status</option>
+                                    <option value="PENDING">⏳ Menunggu Konfirmasi</option>
+                                    <option value="CONFIRMED">🟢 Dikonfirmasi</option>
+                                    <option value="WAITING_PAYMENT">💳 Menunggu Bayar</option>
+                                    <option value="REJECTED">❌ Ditolak</option>
+                                    <option value="CANCELLED">⚠️ Dibatalkan</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <label class="font-bold text-gray-700">Bulan:</label>
+                                <select id="filterBookingMonth" onchange="filterAdminBookings()" class="px-3.5 py-2 rounded-xl border border-gray-300 font-bold bg-white text-xs shadow-sm">
+                                    <option value="all">🗓️ Semua Bulan</option>
+                                    <option value="2026-01">Januari 2026</option>
+                                    <option value="2026-02">Februari 2026</option>
+                                    <option value="2026-03">Maret 2026</option>
+                                    <option value="2026-04">April 2026</option>
+                                    <option value="2026-05">Mei 2026</option>
+                                    <option value="2026-06">Juni 2026</option>
+                                    <option value="2026-07">Juli 2026</option>
+                                    <option value="2026-08">Agustus 2026</option>
+                                    <option value="2026-09">September 2026</option>
+                                    <option value="2026-10" selected>Oktober 2026</option>
+                                    <option value="2026-11">November 2026</option>
+                                    <option value="2026-12">Desember 2026</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <label class="font-bold text-gray-700">Urutan:</label>
+                                <select id="sortBookingOrder" onchange="filterAdminBookings()" class="px-3 py-2 rounded-xl border border-gray-300 text-xs bg-white font-medium shadow-sm">
+                                    <option value="desc">Terbaru</option>
+                                    <option value="asc">Terlama</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="flex items-center space-x-2 text-xs">
                             <span id="bookingStatsBadge" class="bg-teal-100 text-teal-900 font-bold px-3 py-2 rounded-xl border border-teal-200">
                                 Total: 0 Booking
                             </span>
-                            <button onclick="loadAdminBookings()" class="bg-white hover:bg-gray-100 px-3.5 py-2 rounded-xl text-gray-700 font-medium transition border border-gray-200">
-                                🔄 Refresh
+                            <button onclick="loadAdminBookings()" class="bg-white hover:bg-gray-100 px-3.5 py-2 rounded-xl text-gray-700 font-bold transition border border-gray-200 shadow-sm flex items-center space-x-1">
+                                <span>🔄 Refresh</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- Bookings Table Responsive -->
-                    <div class="overflow-x-auto border border-gray-200 rounded-2xl">
-                        <table class="w-full text-left text-xs">
+                    <div class="overflow-x-auto border border-gray-200 rounded-2xl shadow-sm">
+                        <table class="w-full text-left text-xs min-w-[780px]">
                             <thead class="bg-teal-900 text-white font-bold uppercase text-[10px]">
                                 <tr>
-                                    <th class="p-3.5">Nama Tamu</th>
-                                    <th class="p-3.5">WhatsApp</th>
-                                    <th class="p-3.5">Check-In</th>
-                                    <th class="p-3.5">Check-Out</th>
+                                    <th class="p-3.5">Kode & Tamu</th>
+                                    <th class="p-3.5">Kontak WhatsApp</th>
+                                    <th class="p-3.5">Tanggal Menginap</th>
                                     <th class="p-3.5">Total Biaya</th>
-                                    <th class="p-3.5">Status Pembayaran</th>
-                                    <th class="p-3.5 text-center">Aksi & Simulasi</th>
+                                    <th class="p-3.5">Status Booking</th>
+                                    <th class="p-3.5">Kas (DP / Lunas)</th>
+                                    <th class="p-3.5 text-center">Persetujuan & Aksi Admin</th>
                                 </tr>
                             </thead>
                             <tbody id="bookingsTableBody" class="divide-y divide-gray-100">
@@ -646,32 +667,32 @@
                     </form>
                 </div>
 
-                <!-- Keamanan & Ganti PIN Admin -->
+                <!-- Keamanan & Ganti Password Admin -->
                 <div class="bg-white rounded-3xl p-6 shadow-md border border-amber-100 space-y-4">
                     <div class="flex items-center space-x-2 text-amber-900">
                         <i data-lucide="shield-check" class="w-6 h-6 text-amber-600"></i>
-                        <h3 class="font-serif-title font-bold text-xl">Keamanan & Ganti PIN Admin</h3>
+                        <h3 class="font-serif-title font-bold text-xl">Keamanan & Ganti Password Admin</h3>
                     </div>
                     <p class="text-xs text-gray-600 leading-relaxed">
-                        Ubah PIN/Password login Admin dengan PIN baru yang lebih aman agar Portal Admin tidak dapat diakses oleh sembarang orang.
+                        Ganti password / PIN login Admin untuk menjaga keamanan akses Portal Pengelola & Keuangan Villa Babeh. Password baru disimpan terenkripsi dengan aman di database.
                     </p>
                     
-                    <form onsubmit="submitChangeAdminPin(event)" class="bg-amber-50/50 p-5 rounded-2xl border border-amber-200 space-y-4 max-w-md">
+                    <form onsubmit="submitChangeAdminPassword(event)" class="bg-amber-50/50 p-5 rounded-2xl border border-amber-200 space-y-4 max-w-md">
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">1. PIN Admin Saat Ini</label>
-                            <input type="password" id="currentPinInput" required placeholder="Masukkan PIN lama / saat ini" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold">
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">1. Password / PIN Saat Ini</label>
+                            <input type="password" id="currentPinInput" required placeholder="Masukkan password lama / saat ini" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold focus:ring-2 focus:ring-amber-500">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">2. PIN Admin Baru</label>
-                            <input type="password" id="newPinInput" required placeholder="Masukkan PIN baru" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold">
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">2. Password Baru (Minimal 6 Karakter)</label>
+                            <input type="password" id="newPinInput" required placeholder="Masukkan password baru" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold focus:ring-2 focus:ring-amber-500">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">3. Konfirmasi PIN Baru</label>
-                            <input type="password" id="confirmNewPinInput" required placeholder="Ulangi PIN baru" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold">
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">3. Ulangi Password Baru</label>
+                            <input type="password" id="confirmNewPinInput" required placeholder="Ulangi password baru" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold focus:ring-2 focus:ring-amber-500">
                         </div>
                         <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl shadow text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition">
                             <i data-lucide="lock" class="w-4 h-4"></i>
-                            <span>Simpan PIN Admin Baru</span>
+                            <span>Simpan Password Baru</span>
                         </button>
                     </form>
                 </div>
@@ -1130,14 +1151,15 @@
         // Additional Admin Portal Logic
         document.addEventListener("DOMContentLoaded", async () => {
             const adminPin = localStorage.getItem("villa_admin_pin");
+            const adminUser = localStorage.getItem("villa_admin_user") || "admin";
             const adminSession = localStorage.getItem("villa_admin") === "true";
 
             if (adminSession && adminPin) {
                 try {
-                    const res = await fetch("/api/admin/verify_pin", {
+                    const res = await fetch("/api/admin/login", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ pin: adminPin })
+                        body: JSON.stringify({ username: adminUser, password: adminPin })
                     });
                     const data = await res.json();
                     if (data.status === "success") {
@@ -1154,24 +1176,25 @@
 
             // Lockout if invalid or missing PIN
             localStorage.removeItem("villa_admin");
-            localStorage.removeItem("villa_admin_pin");
             document.getElementById("adminLoginScreen").classList.remove("hidden");
             document.getElementById("adminAppLayout").classList.add("hidden");
         });
 
         async function handleAdminLoginSubmit(e) {
             e.preventDefault();
-            const pin = document.getElementById("loginPinInput").value;
+            const identifier = document.getElementById("loginUsernameInput") ? document.getElementById("loginUsernameInput").value.trim() : "admin";
+            const password = document.getElementById("loginPinInput").value.trim();
             try {
-                const res = await fetch("/api/admin/verify_pin", {
+                const res = await fetch("/api/admin/login", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ pin: pin })
+                    body: JSON.stringify({ username: identifier, password: password })
                 });
                 const data = await res.json();
                 if (data.status === "success") {
                     localStorage.setItem("villa_admin", "true");
-                    localStorage.setItem("villa_admin_pin", pin);
+                    localStorage.setItem("villa_admin_user", data.username || identifier);
+                    localStorage.setItem("villa_admin_pin", password);
                     isAdmin = true;
                     document.getElementById("adminLoginScreen").classList.add("hidden");
                     document.getElementById("adminAppLayout").classList.remove("hidden");
@@ -1179,13 +1202,60 @@
                     await loadExpenses();
                     switchAdminTab('dashboard');
                 } else {
-                    alert("🔑 ACCESS DENIED: PIN Admin yang Anda masukkan SALAH!");
+                    alert("🔑 ACCESS DENIED: " + (data.message || "Password Admin salah!"));
                     document.getElementById("loginPinInput").value = "";
                 }
             } catch (e) {
                 alert("Gagal melakukan verifikasi keamanan dengan server.");
             }
         }
+
+        async function submitChangeAdminPassword(e) {
+            if (e) e.preventDefault();
+            const currentPass = document.getElementById("currentPinInput").value.trim();
+            const newPass = document.getElementById("newPinInput").value.trim();
+            const confirmNewPass = document.getElementById("confirmNewPinInput").value.trim();
+
+            if (!currentPass || !newPass || !confirmNewPass) {
+                alert("Semua kolom password wajib diisi!");
+                return;
+            }
+
+            if (newPass.length < 6) {
+                alert("Password baru minimal 6 karakter!");
+                return;
+            }
+
+            if (newPass !== confirmNewPass) {
+                alert("Konfirmasi password baru tidak cocok!");
+                return;
+            }
+
+            try {
+                const res = await fetch("/api/admin/change_password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        old_password: currentPass,
+                        new_password: newPass,
+                        confirm_password: confirmNewPass
+                    })
+                });
+                const data = await res.json();
+                if (data.status === "success") {
+                    alert("✅ " + data.message);
+                    document.getElementById("currentPinInput").value = "";
+                    document.getElementById("newPinInput").value = "";
+                    document.getElementById("confirmNewPinInput").value = "";
+                    localStorage.setItem("villa_admin_pin", newPass);
+                } else {
+                    alert("❌ Gagal: " + (data.message || "Password lama salah!"));
+                }
+            } catch (err) {
+                alert("Terjadi kesalahan koneksi ke server.");
+            }
+        }
+        const submitChangeAdminPin = submitChangeAdminPassword;
 
         function renderReportSummaryList() {
             const container = document.getElementById("reportSummaryList");

@@ -1,12 +1,15 @@
-from flask import Flask, render_template, request, jsonify, Response, send_from_directory
+from flask import Flask, render_template, request, jsonify, Response, send_from_directory, session
 import database as db
 import datetime
 import os
 import csv
 import io
+import json
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.environ.get("SECRET_KEY") or "villa-babeh-secure-jwt-key-2026"
+
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
 if os.environ.get("VERCEL"):
     UPLOAD_FOLDER = os.path.join('/tmp', 'uploads')
@@ -35,6 +38,10 @@ try:
 except Exception as e:
     print(f"Startup DB init warning: {e}")
 
+
+# -------------------------------------------------------------
+# PUBLIC PAGES & DIAGNOSTICS
+# -------------------------------------------------------------
 
 @app.route('/')
 def index():
@@ -81,6 +88,80 @@ def db_status():
             "error_details": str(e)
         }), 500
 
+
+# -------------------------------------------------------------
+# ADMIN AUTHENTICATION & SECURITY
+# -------------------------------------------------------------
+
+@app.route('/api/admin/login', methods=['POST'])
+def admin_login():
+    data = request.json or {}
+    identifier = data.get('username') or data.get('email') or data.get('identifier', '')
+    password = data.get('password') or data.get('pin', '')
+    
+    res = db.verify_admin_login(identifier, password)
+    if res["success"]:
+        session["is_admin"] = True
+        session["admin_user"] = res.get("username", "admin")
+        return jsonify({
+            "status": "success",
+            "is_admin": True,
+            "username": res.get("username", "admin"),
+            "message": res["message"]
+        })
+    else:
+        return jsonify({
+            "status": "error",
+            "is_admin": False,
+            "message": res["message"]
+        }), 401
+
+@app.route('/api/admin/logout', methods=['POST'])
+def admin_logout():
+    session.pop("is_admin", None)
+    session.pop("admin_user", None)
+    return jsonify({"status": "success", "message": "Logout berhasil!"})
+
+@app.route('/api/admin/check_auth', methods=['GET'])
+def admin_check_auth():
+    is_admin = session.get("is_admin", False)
+    return jsonify({
+        "status": "success",
+        "is_admin": is_admin,
+        "username": session.get("admin_user", "admin") if is_admin else None
+    })
+
+@app.route('/api/admin/change_password', methods=['POST'])
+def admin_change_password():
+    data = request.json or {}
+    old_password = data.get('old_password', '')
+    new_password = data.get('new_password', '')
+    confirm_password = data.get('confirm_password', '')
+
+    res = db.change_admin_password(old_password, new_password, confirm_password)
+    if res["success"]:
+        return jsonify({"status": "success", "message": res["message"]})
+    else:
+        return jsonify({"status": "error", "message": res["message"]}), 400
+
+@app.route('/api/admin/verify_pin', methods=['POST'])
+def verify_admin_pin():
+    # Backwards compatibility endpoint
+    data = request.json or {}
+    pin = str(data.get('pin', '')).strip()
+    res = db.verify_admin_login("admin", pin)
+    if res["success"]:
+        session["is_admin"] = True
+        session["admin_user"] = "admin"
+        return jsonify({"status": "success", "message": "PIN / Password Admin Valid!"})
+    else:
+        return jsonify({"status": "error", "message": res["message"]}), 401
+
+
+# -------------------------------------------------------------
+# MEDIA & SUPABASE STORAGE UPLOADS
+# -------------------------------------------------------------
+
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -109,7 +190,13 @@ def upload_file():
                 file_options={"content-type": file.content_type or "image/jpeg"}
             )
             public_url = supabase_client.storage.from_(bucket_name).get_public_url(file_path)
-            return jsonify({"status": "success", "image_url": public_url, "storage_path": file_path, "message": "Foto berhasil diunggah ke Supabase Storage!"})
+            return jsonify({
+                "status": "success",
+                "image_url": public_url,
+                "public_url": public_url,
+                "storage_path": file_path,
+                "message": "Foto berhasil disimpan ke Supabase Storage!"
+            })
         except Exception as e:
             print(f"Supabase Storage upload warning: {e}")
             file.seek(0)
@@ -117,13 +204,24 @@ def upload_file():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
     image_url = f"/static/uploads/{filename}"
-    return jsonify({"status": "success", "image_url": image_url, "message": "Foto/Logo berhasil diunggah!"})
+    return jsonify({
+        "status": "success",
+        "image_url": image_url,
+        "public_url": image_url,
+        "message": "Foto berhasil diunggah!"
+    })
+
+
+# -------------------------------------------------------------
+# CALENDAR & PRICING API
+# -------------------------------------------------------------
 
 @app.route('/api/calendar')
 def get_calendar():
     try:
-        year = int(request.args.get('year', datetime.date.today().year))
-        month = int(request.args.get('month', datetime.date.today().month))
+        now = datetime.date.today()
+        year = int(request.args.get('year', now.year))
+        month = int(request.args.get('month', now.month))
         for_admin = request.args.get('for_admin', 'false').lower() == 'true'
         
         cal_res = db.get_month_calendar(year, month, for_public=not for_admin)
@@ -179,19 +277,48 @@ def update_calendar():
         else:
             price = None
         db.batch_update_dates(start_date, end_date, status=status, price=price, note=note)
-        return jsonify({"status": "success", "message": "Jadwal & harga berhasil diperbarui!"})
+        return jsonify({"status": "success", "message": "Jadwal & harga tanggal berhasil diperbarui di Supabase!"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/api/admin/verify_pin', methods=['POST'])
-def verify_admin_pin():
-    data = request.json or {}
-    pin = str(data.get('pin', '')).strip()
-    current_pin = str(db.get_settings().get('admin_pin', '1234')).strip()
-    if pin and pin == current_pin:
-        return jsonify({"status": "success", "message": "PIN Admin Valid!"})
+@app.route('/api/pricing_rules', methods=['GET', 'POST'])
+def handle_pricing_rules():
+    if request.method == 'GET':
+        rules = db.get_pricing_rules()
+        return jsonify({"status": "success", "pricing_rules": rules})
     else:
-        return jsonify({"status": "error", "message": "PIN Admin salah!"}), 401
+        data = request.json or {}
+        # Expect category and price, or day_of_week and price
+        category = data.get('category')
+        price = data.get('price')
+        if category and price is not None:
+            db.update_pricing_rule_by_category(category, int(price))
+            return jsonify({"status": "success", "message": f"Harga {category} berhasil diperbarui!"})
+        return jsonify({"status": "error", "message": "Parameter tidak lengkap"}), 400
+
+@app.route('/api/calculate_price', methods=['GET', 'POST'])
+def calculate_price():
+    if request.method == 'POST':
+        data = request.json or {}
+        check_in = data.get('check_in')
+        check_out = data.get('check_out')
+    else:
+        check_in = request.args.get('check_in')
+        check_out = request.args.get('check_out')
+
+    if not check_in or not check_out:
+        return jsonify({"status": "error", "message": "Check-in dan Check-out wajib diisi"}), 400
+
+    try:
+        res = db.calculate_booking_price(check_in, check_out)
+        return jsonify({"status": "success", **res})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# -------------------------------------------------------------
+# SETTINGS, FACILITIES & GALLERY
+# -------------------------------------------------------------
 
 @app.route('/api/settings', methods=['GET', 'POST'])
 def handle_settings():
@@ -209,7 +336,7 @@ def handle_settings():
 def handle_facilities():
     conn = db.get_db_connection()
     if request.method == 'GET':
-        facilities = conn.execute("SELECT * FROM facilities ORDER BY id ASC").fetchall()
+        facilities = conn.execute("SELECT * FROM facilities ORDER BY sort_order ASC, id ASC").fetchall()
         conn.close()
         return jsonify({"status": "success", "facilities": [dict(f) for f in facilities]})
     
@@ -248,7 +375,7 @@ def handle_facilities():
 def handle_gallery():
     conn = db.get_db_connection()
     if request.method == 'GET':
-        items = conn.execute("SELECT * FROM gallery ORDER BY id DESC").fetchall()
+        items = conn.execute("SELECT * FROM gallery ORDER BY sort_order ASC, id DESC").fetchall()
         conn.close()
         return jsonify({"status": "success", "gallery": [dict(item) for item in items]})
 
@@ -281,29 +408,10 @@ def handle_gallery():
         conn.close()
         return jsonify({"status": "success", "message": "Foto galeri dihapus"})
 
-@app.route('/api/calculate_price', methods=['GET', 'POST'])
-def calculate_price():
-    if request.method == 'POST':
-        data = request.json or {}
-        check_in = data.get('check_in')
-        check_out = data.get('check_out')
-    else:
-        check_in = request.args.get('check_in')
-        check_out = request.args.get('check_out')
 
-    if not check_in or not check_out:
-        return jsonify({"status": "error", "message": "Check-in dan Check-out wajib diisi"}), 400
-
-    try:
-        res = db.calculate_booking_price(check_in, check_out)
-        return jsonify({"status": "success", **res})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-@app.route('/api/pricing_rules', methods=['GET'])
-def get_pricing_rules():
-    rules = db.get_pricing_rules()
-    return jsonify({"status": "success", "pricing_rules": rules})
+# -------------------------------------------------------------
+# BOOKINGS WORKFLOW & MANUAL ADMIN APPROVAL
+# -------------------------------------------------------------
 
 @app.route('/api/bookings', methods=['GET', 'POST', 'DELETE'])
 def handle_bookings():
@@ -318,14 +426,25 @@ def handle_bookings():
                 payments_list = [dict(p) for p in payments]
             except Exception:
                 payments_list = []
-            total_paid = sum(p['amount'] for p in payments_list)
-            remaining_balance = b_dict['total_price'] - total_paid
+                
+            total_price = int(b_dict.get('total_price') or 0)
+            total_paid = sum(int(p['amount']) for p in payments_list)
+            remaining_balance = max(0, total_price - total_paid)
             
-            p_status = b_dict.get('status', 'PENDING')
+            # Determine payment financial status
+            if total_paid >= total_price and total_price > 0:
+                fin_status = "LUNAS"
+            elif total_paid > 0:
+                fin_status = "DP TERBAYAR"
+            else:
+                fin_status = "BELUM BAYAR"
+
             b_dict['payments'] = payments_list
             b_dict['total_paid'] = total_paid
-            b_dict['remaining_balance'] = max(0, remaining_balance)
-            b_dict['payment_status'] = p_status
+            b_dict['remaining_balance'] = remaining_balance
+            b_dict['payment_status'] = fin_status
+            b_dict['check_in'] = str(b_dict['check_in'])[:10]
+            b_dict['check_out'] = str(b_dict['check_out'])[:10]
             result.append(b_dict)
 
         conn.close()
@@ -338,7 +457,7 @@ def handle_bookings():
         check_in = data.get('check_in')
         check_out = data.get('check_out')
         guest_ig = data.get('guest_ig', '-')
-        total_guests = data.get('total_guests', '10 Orang')
+        total_guests = data.get('total_guests', '25 Orang')
         notes = data.get('notes', '')
 
         if not (guest_name and guest_phone and check_in and check_out):
@@ -352,7 +471,7 @@ def handle_bookings():
     elif request.method == 'DELETE':
         booking_id = request.args.get('id')
         if booking_id:
-            res = db.cancel_booking(booking_id, reason="Admin deleted booking")
+            res = db.cancel_booking(booking_id, reason="Admin membatalkan booking")
             conn.close()
             return jsonify(res)
         conn.close()
@@ -387,6 +506,22 @@ def cancel_booking_endpoint():
     res = db.cancel_booking(booking_id, reason)
     return jsonify(res)
 
+@app.route('/api/bookings/update_status', methods=['POST'])
+def update_booking_status_endpoint():
+    data = request.json or {}
+    booking_id = data.get('booking_id')
+    new_status = data.get('status')
+    reason = data.get('reason', '')
+    if not booking_id or not new_status:
+        return jsonify({"status": "error", "message": "booking_id dan status wajib"}), 400
+    res = db.update_booking_status(booking_id, new_status, reason)
+    return jsonify(res)
+
+
+# -------------------------------------------------------------
+# PAYMENTS (DP & PELUNASAN)
+# -------------------------------------------------------------
+
 @app.route('/api/payments', methods=['GET', 'POST', 'DELETE'])
 def handle_payments():
     conn = db.get_db_connection()
@@ -401,38 +536,51 @@ def handle_payments():
         conn.close()
 
         p_list = [dict(p) for p in payments]
-        total_paid = sum(p['amount'] for p in p_list)
-        total_price = booking['total_price'] if booking else 0
-        remaining_balance = total_price - total_paid
+        total_paid = sum(int(p['amount']) for p in p_list)
+        total_price = int(booking['total_price']) if booking else 0
+        remaining_balance = max(0, total_price - total_paid)
 
         return jsonify({
             "status": "success",
             "payments": p_list,
             "total_price": total_price,
             "total_paid": total_paid,
-            "remaining_balance": max(0, remaining_balance)
+            "remaining_balance": remaining_balance
         })
 
     elif request.method == 'POST':
         data = request.json or {}
         booking_id = data.get('booking_id')
-        payment_name = data.get('payment_name', 'DP / Pembayaran')
+        payment_name = data.get('payment_name', 'DP 50%')
         amount = int(data.get('amount', 0))
         payment_date = data.get('payment_date') or datetime.date.today().strftime("%Y-%m-%d")
+        payment_method = data.get('payment_method', 'Transfer Bank')
         notes = data.get('notes', '')
 
         if not booking_id or amount <= 0:
             conn.close()
-            return jsonify({"status": "error", "message": "Mohon isi jumlah pembayaran dengan benar"}), 400
+            return jsonify({"status": "error", "message": "Mohon masukkan nominal pembayaran dengan benar"}), 400
 
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO payments (booking_id, payment_name, amount, payment_date, notes)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (booking_id, payment_name, amount, payment_date, notes))
+            INSERT INTO payments (booking_id, payment_name, amount, payment_date, payment_method, notes)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (booking_id, payment_name, amount, payment_date, payment_method, notes))
         conn.commit()
+
+        # Check total paid to auto-update booking status if applicable
+        all_p = conn.execute("SELECT amount FROM payments WHERE booking_id=?", (booking_id,)).fetchall()
+        tot_paid = sum(int(p['amount']) for p in all_p)
+        b_row = conn.execute("SELECT total_price, status FROM bookings WHERE id=?", (booking_id,)).fetchone()
+        
+        if b_row:
+            tot_price = int(b_row['total_price'])
+            if tot_paid >= tot_price and b_row['status'] == 'WAITING_PAYMENT':
+                conn.execute("UPDATE bookings SET status = 'WAITING_VERIFICATION' WHERE id=?", (booking_id,))
+                conn.commit()
+
         conn.close()
-        return jsonify({"status": "success", "message": "Pembayaran berhasil dicatat!"})
+        return jsonify({"status": "success", "message": "Pembayaran DP / Pelunasan berhasil dicatat di Supabase!"})
 
     elif request.method == 'DELETE':
         payment_id = request.args.get('id')
@@ -442,12 +590,21 @@ def handle_payments():
         conn.close()
         return jsonify({"status": "success", "message": "Catatan pembayaran dihapus"})
 
+
+# -------------------------------------------------------------
+# EXPENSES & FINANCIAL REPORTING
+# -------------------------------------------------------------
+
 @app.route('/api/expenses', methods=['GET', 'POST', 'DELETE'])
 def handle_expenses():
     if request.method == 'GET':
         month = request.args.get('month', 'all')
-        expenses = db.get_expenses(month)
-        total_expenses = sum(e['amount'] for e in expenses)
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        category = request.args.get('category')
+        
+        expenses = db.get_expenses(month=month, start_date=start_date, end_date=end_date, category=category)
+        total_expenses = sum(int(e['amount']) for e in expenses)
         return jsonify({
             "status": "success",
             "expenses": expenses,
@@ -460,23 +617,82 @@ def handle_expenses():
         category = data.get('category', 'Operasional')
         amount = int(data.get('amount', 0))
         expense_date = data.get('expense_date') or datetime.date.today().strftime("%Y-%m-%d")
+        payment_method = data.get('payment_method', 'Transfer Bank')
         notes = data.get('notes', '')
 
         if not title or amount <= 0:
-            return jsonify({"status": "error", "message": "Mohon isi nama pengeluaran & jumlah biaya dengan benar"}), 400
+            return jsonify({"status": "error", "message": "Nama pengeluaran & jumlah biaya wajib diisi dengan benar"}), 400
 
-        expense_id = db.add_expense(title, category, amount, expense_date, notes)
+        expense_id = db.add_expense(title, category, amount, expense_date, notes, payment_method)
         return jsonify({
             "status": "success",
             "expense_id": expense_id,
-            "message": "Pengeluaran berhasil dicatat!"
+            "message": "Biaya pengeluaran berhasil dicatat!"
         })
 
     elif request.method == 'DELETE':
         expense_id = request.args.get('id')
         if expense_id:
             db.delete_expense(expense_id)
-        return jsonify({"status": "success", "message": "Pengeluaran dihapus"})
+        return jsonify({"status": "success", "message": "Catatan pengeluaran dihapus"})
+
+@app.route('/api/reports/summary')
+def get_reports_summary():
+    month = request.args.get('month', 'all')
+    conn = db.get_db_connection()
+    bookings = conn.execute("SELECT * FROM bookings ORDER BY check_in DESC").fetchall()
+    expenses = db.get_expenses(month)
+    
+    total_omset = 0
+    total_kas_masuk = 0
+    total_sisa_piutang = 0
+    total_booking_count = 0
+    confirmed_count = 0
+    pending_count = 0
+
+    for b in bookings:
+        b_dict = dict(b)
+        check_in_str = str(b_dict['check_in'])[:10]
+        if month != 'all' and not check_in_str.startswith(month):
+            continue
+
+        total_booking_count += 1
+        st = str(b_dict.get('status', '')).upper()
+        if st in ('CONFIRMED',):
+            confirmed_count += 1
+        elif st in ('PENDING', 'WAITING_PAYMENT', 'WAITING_VERIFICATION'):
+            pending_count += 1
+
+        try:
+            payments = conn.execute("SELECT amount FROM payments WHERE booking_id=?", (b_dict['id'],)).fetchall()
+            p_sum = sum(int(p['amount']) for p in payments)
+        except Exception:
+            p_sum = 0
+
+        tot_price = int(b_dict.get('total_price') or 0)
+        remaining = max(0, tot_price - p_sum)
+
+        total_omset += tot_price
+        total_kas_masuk += p_sum
+        total_sisa_piutang += remaining
+
+    conn.close()
+
+    total_pengeluaran = sum(int(e['amount']) for e in expenses)
+    saldo_bersih = total_kas_masuk - total_pengeluaran
+
+    return jsonify({
+        "status": "success",
+        "period": month,
+        "total_omset": total_omset,
+        "total_kas_masuk": total_kas_masuk,
+        "total_sisa_piutang": total_sisa_piutang,
+        "total_pengeluaran": total_pengeluaran,
+        "saldo_bersih": saldo_bersih,
+        "total_bookings": total_booking_count,
+        "confirmed_bookings": confirmed_count,
+        "pending_bookings": pending_count
+    })
 
 @app.route('/api/reports/export')
 def export_csv_report():
@@ -488,12 +704,12 @@ def export_csv_report():
     output = io.StringIO()
     writer = csv.writer(output)
     
-    writer.writerow([f"LAPORAN KEUANGAN VILLA BABEH - PERIODE: {month}"])
+    writer.writerow([f"LAPORAN KEUANGAN RESMI VILLA BABEH - PERIODE: {month}"])
     writer.writerow([])
-    writer.writerow(["--- 1. RINCIAN PEMASUKAN RESERVASI ---"])
+    writer.writerow(["--- 1. RINCIAN RESERVASI & KAS MASUK (DP/PELUNASAN) ---"])
     writer.writerow([
         "No. Invoice", "Nama Tamu", "No. WhatsApp", "Tanggal Check-In", 
-        "Tanggal Check-Out", "Total Biaya (Rp)", "Kas Masuk / DP (Rp)", 
+        "Tanggal Check-Out", "Total Biaya Sewa (Rp)", "Kas Masuk / DP (Rp)", 
         "Sisa Tagihan (Rp)", "Status Booking", "Catatan"
     ])
 
@@ -503,54 +719,61 @@ def export_csv_report():
 
     for b in bookings:
         b_dict = dict(b)
-        if month != 'all' and not b_dict['check_in'].startswith(month):
+        check_in_str = str(b_dict['check_in'])[:10]
+        if month != 'all' and not check_in_str.startswith(month):
             continue
 
-        payments = conn.execute("SELECT amount FROM payments WHERE booking_id=?", (b_dict['id'],)).fetchall()
-        total_paid = sum(p['amount'] for p in payments)
-        remaining = max(0, b_dict['total_price'] - total_paid)
+        try:
+            payments = conn.execute("SELECT amount FROM payments WHERE booking_id=?", (b_dict['id'],)).fetchall()
+            paid = sum(int(p['amount']) for p in payments)
+        except Exception:
+            paid = 0
+
+        tot_price = int(b_dict.get('total_price') or 0)
+        remaining = max(0, tot_price - paid)
         
         p_status = b_dict.get('status', 'PENDING')
-        inv_no = b_dict.get('booking_code') or f"INV/VB/{b_dict['check_in'].replace('-', '')[:6]}/{str(b_dict['id']).zfill(3)}"
+        inv_no = b_dict.get('booking_code') or f"INV/VB/{check_in_str.replace('-', '')[:6]}/{str(b_dict['id']).zfill(3)}"
         writer.writerow([
             inv_no, b_dict['guest_name'], b_dict['guest_phone'], 
-            b_dict['check_in'], b_dict['check_out'], b_dict['total_price'],
-            total_paid, remaining, p_status, b_dict['notes'] or ''
+            check_in_str, str(b_dict['check_out'])[:10], tot_price,
+            paid, remaining, p_status, b_dict.get('notes') or ''
         ])
 
-        total_omset += b_dict['total_price']
-        total_kas_masuk += total_paid
+        total_omset += tot_price
+        total_kas_masuk += paid
         total_sisa += remaining
 
     conn.close()
 
     writer.writerow([])
     writer.writerow(["TOTAL OMSET SEWA", total_omset])
-    writer.writerow(["TOTAL KAS MASUK", total_kas_masuk])
+    writer.writerow(["TOTAL KAS MASUK AKTUAL", total_kas_masuk])
     writer.writerow(["TOTAL SISA PIUTANG", total_sisa])
     writer.writerow([])
 
-    writer.writerow(["--- 2. RINCIAN PENGELUARAN VILLA ---"])
-    writer.writerow(["ID", "Pengeluaran", "Kategori", "Jumlah Biaya (Rp)", "Tanggal Pengeluaran", "Catatan"])
+    writer.writerow(["--- 2. RINCIAN BEBAN PENGELUARAN OPERASIONAL ---"])
+    writer.writerow(["ID", "Nama Pengeluaran", "Kategori", "Jumlah Biaya (Rp)", "Tanggal Pengeluaran", "Metode Bayar", "Catatan"])
     
     total_pengeluaran = 0
     for e in expenses:
-        writer.writerow([e['id'], e['title'], e['category'], e['amount'], e['expense_date'], e['notes'] or ''])
-        total_pengeluaran += e['amount']
+        writer.writerow([e['id'], e['title'], e['category'], e['amount'], e['expense_date'], e.get('payment_method', 'Transfer'), e.get('notes') or ''])
+        total_pengeluaran += int(e['amount'])
 
     writer.writerow([])
-    writer.writerow(["TOTAL PENGELUARAN VILLA", total_pengeluaran])
+    writer.writerow(["TOTAL PENGELUARAN OPERASIONAL", total_pengeluaran])
     writer.writerow([])
 
     net_profit = total_kas_masuk - total_pengeluaran
-    writer.writerow(["--- 3. RINGKASAN LABA BERSIH (NET PROFIT) ---"])
-    writer.writerow(["TOTAL KAS MASUK (PEMASUKAN)", total_kas_masuk])
-    writer.writerow(["TOTAL BEBAN PENGELUARAN", total_pengeluaran])
-    writer.writerow(["KEUNTUNGAN BERSIH (NET PROFIT)", net_profit])
+    writer.writerow(["--- 3. RINGKASAN SALDO BERSIH (NET PROFIT) ---"])
+    writer.writerow(["TOTAL KAS MASUK (PENERIMAAN AKTUAL)", total_kas_masuk])
+    writer.writerow(["TOTAL BIAYA PENGELUARAN", total_pengeluaran])
+    writer.writerow(["SALDO BERSIH PERIODE (LABA BERSIH)", net_profit])
 
     response = Response(output.getvalue(), mimetype="text/csv")
-    response.headers["Content-Disposition"] = f"attachment; filename=Laporan_Keuangan_Lengkap_Villa_{month}.csv"
+    response.headers["Content-Disposition"] = f"attachment; filename=Laporan_Keuangan_Villa_Babeh_{month}.csv"
     return response
+
 
 if __name__ == '__main__':
     print("Starting Villa Babeh Server at http://127.0.0.1:5000 ...")
